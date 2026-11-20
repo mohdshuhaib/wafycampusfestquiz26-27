@@ -1,0 +1,1440 @@
+/**
+ * Wafy Campus Fest Quiz 2026-27 - Main Application Logic
+ * Modern, Offline-First, Presentation-Grade Quiz Experience
+ */
+
+class QuizApp {
+  constructor() {
+    this.data = QUIZ_DATA;
+    this.currentView = 'landing'; // landing, gap, general-q, r2-boxes, r2-choice, r4-boxes, r4-clue, finish
+    this.currentRoundIdx = 0; // 0 to 4 (Rounds 1 to 5)
+    this.currentQuestionIdx = 0; // Question index inside general round
+    this.currentBoxNum = null; // Currently selected box in R2 or R4 (1 to 6)
+    this.currentR2Question = null; // Specific question object in R2
+    this.currentR4ClueStep = 1; // 1, 2, or 3 for R4
+    
+    // Timer state
+    this.timerSeconds = 60;
+    this.timerRunning = false;
+    this.timerInterval = null;
+    this.questionStarted = false;
+
+    // Track used boxes (hide once completed)
+    this.r2UsedBoxes = new Set();
+    this.r4UsedBoxes = new Set();
+
+    // R2 Spin state
+    this.isSpinning = false;
+
+    // Teams & Scoreboard
+    this.teams = [
+      { name: "Team A", score: 0 },
+      { name: "Team B", score: 0 },
+      { name: "Team C", score: 0 },
+      { name: "Team D", score: 0 },
+      { name: "Team E", score: 0 },
+      { name: "Team F", score: 0 }
+    ];
+    this.activeTeamIdx = 0;
+
+    // Preloader state
+    this.loadedAssetsCount = 0;
+    this.totalAssetsCount = 37;
+
+    // DOM Cache
+    this.dom = {};
+  }
+
+  init() {
+    this.cacheDom();
+    this.bindEvents();
+    this.renderScoreboard();
+    this.preloadAllAssets();
+    this.showLanding();
+    console.log("Quiz App Initialized");
+  }
+
+  cacheDom() {
+    this.dom.stage = document.getElementById('quiz-stage');
+    this.dom.header = document.getElementById('stage-header');
+    this.dom.roundBadge = document.getElementById('header-round-badge');
+    this.dom.qBadge = document.getElementById('header-q-badge');
+    this.dom.viewContainer = document.getElementById('stage-content');
+    this.dom.timerContainer = document.getElementById('stage-timer-widget');
+    this.dom.timerSeconds = document.getElementById('timer-seconds-display');
+    this.dom.timerSvgCircle = document.getElementById('timer-progress-circle');
+
+    // Modals & Drawers
+    this.dom.timeOverModal = document.getElementById('time-over-modal');
+    this.dom.evalBanner = document.getElementById('eval-banner');
+    this.dom.evalText = document.getElementById('eval-text');
+    this.dom.judgeDrawer = document.getElementById('judge-drawer');
+    this.dom.scoresModal = document.getElementById('scores-modal');
+  }
+
+  bindEvents() {
+    // Global keyboard navigation
+    window.addEventListener('keydown', (e) => this.handleKeypress(e));
+
+    // Fullscreen toggle
+    const fsBtn = document.getElementById('btn-fullscreen');
+    if (fsBtn) {
+      fsBtn.addEventListener('click', () => this.toggleFullscreen());
+    }
+
+    // Audio Mute toggle
+    const audioBtn = document.getElementById('btn-toggle-sound');
+    if (audioBtn) {
+      audioBtn.addEventListener('click', () => {
+        const isMuted = window.audioMgr.toggleMute();
+        audioBtn.innerHTML = isMuted ? '🔇' : '🔊';
+        audioBtn.title = isMuted ? 'Unmute Sound' : 'Mute Sound';
+      });
+    }
+
+    // Judge drawer toggle
+    const judgeBtn = document.getElementById('btn-judge-menu');
+    if (judgeBtn) {
+      judgeBtn.addEventListener('click', () => this.toggleJudgeDrawer());
+    }
+
+    // Close drawers on backdrop click
+    document.getElementById('judge-drawer-close')?.addEventListener('click', () => this.closeJudgeDrawer());
+    document.getElementById('scoreboard-btn')?.addEventListener('click', () => this.toggleScoreboard());
+    document.getElementById('scores-modal-close')?.addEventListener('click', () => this.closeScoreboard());
+
+    // Dismiss time-over modal
+    document.getElementById('btn-dismiss-timeover')?.addEventListener('click', () => {
+      this.dom.timeOverModal.classList.add('hidden');
+    });
+  }
+
+  handleKeypress(e) {
+    // Ignore keypresses if typing in input
+    if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+    switch (e.key.toLowerCase()) {
+      case ' ': // Space bar
+        e.preventDefault();
+        if (this.currentView === 'general-q' || this.currentView === 'r4-clue') {
+          if (!this.questionStarted) {
+            this.startQuestionTimer();
+          } else if (this.currentView === 'r4-clue' && this.currentR4ClueStep < 3) {
+            this.revealNextClue();
+          }
+        }
+        break;
+      case 'c': // Correct
+        this.evaluateAnswer(true);
+        break;
+      case 'w': // Wrong
+        this.evaluateAnswer(false);
+        break;
+      case 'a': // Toggle Answer Key
+        this.toggleAnswerKey();
+        break;
+      case 'p': // Pause/Resume Timer
+        this.toggleTimerPause();
+        break;
+      case 'f': // Fullscreen
+        this.toggleFullscreen();
+        break;
+      case 'j': // Judge drawer
+        this.toggleJudgeDrawer();
+        break;
+      case 'arrowright': // Next
+        this.navigateNext();
+        break;
+      case 'arrowleft': // Back
+        this.navigateBack();
+        break;
+    }
+  }
+
+  toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  /**
+   * Preload all assets so everything works 100% offline and lag-free
+   */
+  preloadAllAssets() {
+    const assetUrls = [
+      'quizlanding.png',
+      'quizcover.png'
+    ];
+
+    // Collect all media from QUIZ_DATA
+    this.data.rounds.forEach(r => {
+      if (r.questions) {
+        r.questions.forEach(q => {
+          if (q.image) assetUrls.push(q.image);
+          if (q.video) assetUrls.push(q.video);
+          if (q.audio) assetUrls.push(q.audio);
+        });
+      }
+      if (r.boxes) {
+        r.boxes.forEach(b => {
+          if (b.questions) {
+            b.questions.forEach(q => {
+              if (q.image) assetUrls.push(q.image);
+            });
+          }
+          if (b.clues) {
+            b.clues.forEach(cl => {
+              if (cl.image) assetUrls.push(cl.image);
+            });
+          }
+        });
+      }
+    });
+
+    const uniqueUrls = [...new Set(assetUrls)];
+    this.totalAssetsCount = uniqueUrls.length;
+
+    const progressEl = document.getElementById('preload-progress-bar');
+    const statusEl = document.getElementById('preload-status-text');
+
+    const updateStatus = () => {
+      this.loadedAssetsCount++;
+      const pct = Math.min(100, Math.round((this.loadedAssetsCount / this.totalAssetsCount) * 100));
+      if (progressEl) progressEl.style.width = `${pct}%`;
+      if (statusEl) statusEl.innerText = `${this.loadedAssetsCount} / ${this.totalAssetsCount} Assets Cached (${pct}%)`;
+    };
+
+    uniqueUrls.forEach(url => {
+      if (url.endsWith('.mp4')) {
+        const v = document.createElement('video');
+        v.preload = 'auto';
+        v.src = url;
+        v.onloadeddata = updateStatus;
+        v.onerror = updateStatus;
+      } else if (url.endsWith('.mp3')) {
+        const a = new Audio();
+        a.src = url;
+        a.oncanplaythrough = updateStatus;
+        a.onerror = updateStatus;
+      } else {
+        const img = new Image();
+        img.src = url;
+        img.onload = updateStatus;
+        img.onerror = updateStatus;
+      }
+    });
+  }
+
+  // ==========================================
+  // VIEW ROUTER & NAVIGATION
+  // ==========================================
+
+  showLanding() {
+    this.currentView = 'landing';
+    this.stopTimer();
+    this.dom.stage.className = 'stage-landing';
+    this.dom.header.classList.add('hidden');
+    this.dom.timerContainer.classList.add('hidden');
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="landing-view-content fade-in">
+        <div class="landing-hero-backdrop"></div>
+        <div class="landing-content-card">
+          <div class="landing-fest-pill">CAMPUS ARTS FEST 2026 • NOVEMBER 21-22</div>
+          <div class="landing-sub-pill">Wafy Campus Students' Union • Wafy Campus Kalikavu</div>
+          <h1 class="landing-main-title">QUIZ COMPETITION</h1>
+          <div class="landing-lead-tag">Led by : <span>Hafsal Faizy Anjilangadi</span></div>
+
+          <div class="landing-actions">
+            <button id="btn-start-quiz" class="btn-primary-glow btn-large">
+              <span>🚀 START QUIZ COMPETITION</span>
+            </button>
+          </div>
+
+          <div class="landing-rounds-quickbar">
+            <span class="quickbar-label">QUICK JUMP TO ROUND:</span>
+            <div class="quickbar-buttons">
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(0)">ROUND 1 (General)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(1)">ROUND 2 (Box Spin)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(2)">ROUND 3 (General)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(3)">ROUND 4 (Clue)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(4)">ROUND 5 (Finale)</button>
+            </div>
+          </div>
+
+          <div class="preload-dock">
+            <div class="preload-meta">
+              <span id="preload-status-text">Preloading Local Presentation Assets...</span>
+              <span class="preload-offline-badge">⚡ 100% Offline Ready</span>
+            </div>
+            <div class="preload-bar-track">
+              <div id="preload-progress-bar" class="preload-bar-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-start-quiz').addEventListener('click', () => {
+      window.audioMgr.playClick();
+      this.goToRoundGap(0);
+    });
+  }
+
+  goToRoundGap(roundIdx) {
+    this.currentRoundIdx = roundIdx;
+    this.currentQuestionIdx = 0;
+    this.currentView = 'gap';
+    this.stopTimer();
+
+    this.dom.stage.className = 'stage-cover';
+    this.dom.header.classList.remove('hidden');
+    this.dom.timerContainer.classList.add('hidden');
+
+    const round = this.data.rounds[this.currentRoundIdx];
+    this.dom.roundBadge.innerText = round.title.toUpperCase();
+    this.dom.qBadge.innerText = 'ROUND OVERVIEW';
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="gap-page-container fade-in">
+        <div class="gap-card">
+          <div class="gap-round-number">${round.title.toUpperCase()}</div>
+          <h2 class="gap-round-title">${round.subtitle}</h2>
+          <p class="gap-round-desc">${round.description}</p>
+
+          <div class="gap-rules-box">
+            <div class="rules-header">🎯 ROUND RULES & SPECIFICATIONS</div>
+            <ul class="rules-list">
+              ${round.rules.map(r => `<li>${r}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div class="gap-actions">
+            <button class="btn-secondary" onclick="quizApp.showLanding()">
+              ⬅ BACK TO HOME
+            </button>
+            <button id="btn-enter-round" class="btn-primary-glow btn-large">
+              <span>ENTER ${round.title.toUpperCase()} ➡</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-enter-round').addEventListener('click', () => {
+      window.audioMgr.playClick();
+      this.startCurrentRound();
+    });
+  }
+
+  startCurrentRound() {
+    const round = this.data.rounds[this.currentRoundIdx];
+    if (round.type === 'general') {
+      this.currentQuestionIdx = 0;
+      this.showGeneralQuestion();
+    } else if (round.id === 2) {
+      this.showRound2Boxes();
+    } else if (round.id === 4) {
+      this.showRound4Boxes();
+    }
+  }
+
+  // ==========================================
+  // GENERAL QUESTION VIEW (R1, R3, R5)
+  // ==========================================
+
+  showGeneralQuestion() {
+    this.currentView = 'general-q';
+    this.questionStarted = false;
+    this.stopTimer();
+
+    const round = this.data.rounds[this.currentRoundIdx];
+    const q = round.questions[this.currentQuestionIdx];
+
+    this.dom.stage.className = 'stage-cover';
+    this.dom.header.classList.remove('hidden');
+    this.dom.timerContainer.classList.remove('hidden');
+    this.resetTimerDisplay();
+
+    this.dom.roundBadge.innerText = round.title.toUpperCase();
+    this.dom.qBadge.innerText = `QUESTION ${this.currentQuestionIdx + 1} OF ${round.totalQuestions}`;
+
+    // Has media
+    const hasMedia = q.video || q.image || q.audio;
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="question-stage-layout fade-in">
+        <!-- Ready / Start Timer Overlay -->
+        <div id="ready-gate-overlay" class="ready-gate-card">
+          <div class="ready-badge">${round.title.toUpperCase()} • QUESTION ${this.currentQuestionIdx + 1}</div>
+          <h3 class="ready-prompt-title">Ready for the Question?</h3>
+          <p class="ready-prompt-sub">Timer will begin counting down (60 seconds) immediately when revealed.</p>
+          <button id="btn-start-timer-reveal" class="btn-primary-glow btn-huge">
+            <span>⏱ START TIMER & REVEAL QUESTION</span>
+          </button>
+        </div>
+
+        <!-- Question Body (Initially hidden by gate) -->
+        <div id="question-content-box" class="question-content-box question-blurred">
+          <div class="question-header-row">
+            <span class="q-number-pill">Q ${this.currentQuestionIdx + 1}</span>
+            <span class="q-points-pill">60 SECONDS</span>
+          </div>
+
+          <div class="question-text-container">
+            <h2 class="question-text-display">${q.text}</h2>
+          </div>
+
+          <!-- Media Zone -->
+          ${hasMedia ? `
+            <div class="media-display-zone">
+              ${q.video ? `
+                <div class="video-wrapper">
+                  <video id="q-video-player" class="stage-video" controls preload="auto">
+                    <source src="${q.video}" type="video/mp4">
+                    Your browser does not support the video tag.
+                  </video>
+                  <div class="media-note">▶ Click play on the video when ready to watch</div>
+                </div>
+              ` : ''}
+
+              ${q.image ? `
+                <div class="image-wrapper">
+                  <img src="${q.image}" alt="Question Image" class="stage-image" onclick="quizApp.zoomImage(this.src)">
+                  <div class="media-zoom-hint">🔍 Click image to enlarge</div>
+                </div>
+              ` : ''}
+
+              ${q.audio ? `
+                <div class="audio-wrapper">
+                  <div class="audio-player-card">
+                    <button id="btn-audio-play" class="btn-audio-control" onclick="quizApp.toggleAudio('${q.audio}')">
+                      <span id="audio-btn-icon">▶</span>
+                      <span id="audio-btn-label">PLAY AUDIO CLUE</span>
+                    </button>
+                    <audio id="q-audio-player" src="${q.audio}" preload="auto"></audio>
+                    <div class="audio-waveform-bars">
+                      <span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          <!-- Answer Key Reveal (Judge Reference) -->
+          <div id="answer-key-box" class="answer-key-box hidden">
+            <div class="answer-label">OFFICIAL ANSWER REFERENCE:</div>
+            <div class="answer-value">${q.answer}</div>
+            ${q.hint ? `<div class="answer-hint">ℹ ${q.hint}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Bottom Judge & Navigation Bar -->
+        <div class="bottom-action-bar">
+          <div class="nav-button-group">
+            <button class="btn-control" onclick="quizApp.prevGeneralQuestion()">⬅ PREVIOUS</button>
+            <button class="btn-control" onclick="quizApp.nextGeneralQuestion()">NEXT QUESTION ➡</button>
+          </div>
+
+          <div class="judge-quick-group">
+            <button id="btn-judge-correct" class="btn-eval btn-correct" onclick="quizApp.evaluateAnswer(true)">
+              ✔ CORRECT ANSWER
+            </button>
+            <button id="btn-judge-wrong" class="btn-eval btn-wrong" onclick="quizApp.evaluateAnswer(false)">
+              ✖ WRONG ANSWER
+            </button>
+            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleAnswerKey()">
+              👁 SHOW ANSWER
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-start-timer-reveal').addEventListener('click', () => {
+      this.startQuestionTimer();
+    });
+  }
+
+  startQuestionTimer() {
+    if (this.questionStarted) return;
+    this.questionStarted = true;
+    window.audioMgr.playClick();
+
+    // Reveal question
+    const gate = document.getElementById('ready-gate-overlay');
+    if (gate) gate.classList.add('gate-hidden');
+
+    const contentBox = document.getElementById('question-content-box');
+    if (contentBox) contentBox.classList.remove('question-blurred');
+
+    this.startTimer(60);
+  }
+
+  prevGeneralQuestion() {
+    window.audioMgr.playClick();
+    if (this.currentQuestionIdx > 0) {
+      this.currentQuestionIdx--;
+      this.showGeneralQuestion();
+    } else {
+      this.goToRoundGap(this.currentRoundIdx);
+    }
+  }
+
+  nextGeneralQuestion() {
+    window.audioMgr.playClick();
+    const round = this.data.rounds[this.currentRoundIdx];
+    if (this.currentQuestionIdx < round.questions.length - 1) {
+      this.currentQuestionIdx++;
+      this.showGeneralQuestion();
+    } else {
+      // Completed all questions in round -> Go to next round gap or finish
+      if (this.currentRoundIdx < this.data.rounds.length - 1) {
+        this.goToRoundGap(this.currentRoundIdx + 1);
+      } else {
+        this.showFinishScreen();
+      }
+    }
+  }
+
+  // ==========================================
+  // ROUND 2: HIGHLIGHT BOX SPIN ROUND
+  // ==========================================
+
+  showRound2Boxes() {
+    this.currentView = 'r2-boxes';
+    this.stopTimer();
+
+    this.dom.stage.className = 'stage-cover';
+    this.dom.header.classList.remove('hidden');
+    this.dom.timerContainer.classList.add('hidden');
+
+    this.dom.roundBadge.innerText = 'ROUND 2';
+    this.dom.qBadge.innerText = 'BOX SELECTION';
+
+    const round = this.data.rounds[1];
+    const remainingCount = round.boxes.length - this.r2UsedBoxes.size;
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="box-selection-screen fade-in">
+        <div class="box-selection-header">
+          <div class="box-round-title">ROUND 2: THE HIGHLIGHT BOX SELECTION</div>
+          <p class="box-selection-subtitle">
+            ${remainingCount > 1 
+              ? 'Click SPIN to rapidly cycle for 4 seconds and randomly select a box, or click an available box.' 
+              : 'FINAL REMAINING BOX! Click on it to view questions.'}
+          </p>
+        </div>
+
+        <div class="boxes-grid" id="r2-boxes-grid">
+          ${round.boxes.map(b => {
+            const isUsed = this.r2UsedBoxes.has(b.boxNum);
+            return `
+              <div 
+                id="r2-box-${b.boxNum}" 
+                class="quiz-box-card ${isUsed ? 'box-hidden' : ''}"
+                onclick="quizApp.onBoxClick(${b.boxNum})"
+              >
+                <div class="box-inner-glow"></div>
+                <div class="box-folder-tab">FOLDER ${b.boxNum}</div>
+                <div class="box-front">
+                  <div class="box-icon">📦</div>
+                  <div class="box-number">BOX ${b.boxNum}</div>
+                  <div class="box-meta">2 Questions Inside</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <div class="box-selection-actions">
+          <button class="btn-secondary" onclick="quizApp.goToRoundGap(1)">
+            ⬅ ROUND OVERVIEW
+          </button>
+
+          <button 
+            id="btn-spin-r2" 
+            class="btn-primary-glow btn-spin ${this.isSpinning || remainingCount === 0 ? 'disabled' : ''}"
+            onclick="quizApp.spinRound2Boxes()"
+          >
+            <span>🎰 SPIN / RANDOM SELECT</span>
+          </button>
+
+          <button class="btn-control" onclick="quizApp.resetR2Boxes()">
+            🔄 RESET BOXES
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  spinRound2Boxes() {
+    if (this.isSpinning) return;
+    const round = this.data.rounds[1];
+    const available = round.boxes.filter(b => !this.r2UsedBoxes.has(b.boxNum));
+
+    if (available.length === 0) {
+      alert("All boxes have been selected for Round 2!");
+      return;
+    }
+
+    if (available.length === 1) {
+      this.selectRound2Box(available[0].boxNum);
+      return;
+    }
+
+    this.isSpinning = true;
+    const spinBtn = document.getElementById('btn-spin-r2');
+    if (spinBtn) spinBtn.classList.add('disabled');
+
+    // Pick a winner at random
+    const winner = available[Math.floor(Math.random() * available.length)];
+    const duration = 4000; // Exactly 4 seconds as requested!
+    const startTime = Date.now();
+    let tickSpeed = 70; // Rapid tick in ms
+    let currentIdx = 0;
+
+    const cycle = () => {
+      const elapsed = Date.now() - startTime;
+
+      // Remove highlight from all
+      available.forEach(b => {
+        const el = document.getElementById(`r2-box-${b.boxNum}`);
+        if (el) el.classList.remove('box-highlighted');
+      });
+
+      // Highlight current
+      const activeBox = available[currentIdx % available.length];
+      const el = document.getElementById(`r2-box-${activeBox.boxNum}`);
+      if (el) el.classList.add('box-highlighted');
+      window.audioMgr.playSpinTick();
+
+      currentIdx++;
+
+      if (elapsed < duration) {
+        // Slow down slightly in the last 1.2 seconds
+        if (elapsed > duration - 1200) {
+          tickSpeed += 14;
+        }
+        setTimeout(cycle, tickSpeed);
+      } else {
+        // Spin finished! Lock into winner
+        available.forEach(b => {
+          const el = document.getElementById(`r2-box-${b.boxNum}`);
+          if (el) el.classList.remove('box-highlighted');
+        });
+
+        const winEl = document.getElementById(`r2-box-${winner.boxNum}`);
+        if (winEl) {
+          winEl.classList.add('box-selected-win');
+        }
+        window.audioMgr.playSpinLock();
+
+        setTimeout(() => {
+          this.isSpinning = false;
+          this.selectRound2Box(winner.boxNum);
+        }, 1200);
+      }
+    };
+
+    cycle();
+  }
+
+  onBoxClick(boxNum) {
+    if (this.isSpinning || this.r2UsedBoxes.has(boxNum)) return;
+    this.selectRound2Box(boxNum);
+  }
+
+  selectRound2Box(boxNum) {
+    this.currentBoxNum = boxNum;
+    this.currentView = 'r2-choice';
+    window.audioMgr.playClick();
+
+    const round = this.data.rounds[1];
+    const box = round.boxes.find(b => b.boxNum === boxNum);
+
+    this.dom.stage.className = 'stage-cover';
+    this.dom.header.classList.remove('hidden');
+    this.dom.timerContainer.classList.add('hidden');
+
+    this.dom.roundBadge.innerText = 'ROUND 2';
+    this.dom.qBadge.innerText = `BOX ${boxNum} SELECTION`;
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="box-choice-screen fade-in">
+        <div class="box-choice-header">
+          <div class="choice-badge">BOX ${boxNum} UNLOCKED</div>
+          <h2 class="choice-title">Choose Your Question</h2>
+          <p class="choice-sub">The team must select either <strong>Q-1</strong> or <strong>Q-2</strong> to reveal.</p>
+        </div>
+
+        <div class="choice-cards-container">
+          <div class="choice-card" onclick="quizApp.revealR2Question(1)">
+            <div class="choice-card-tag">OPTION 1</div>
+            <div class="choice-card-letter">Q - 1</div>
+            <div class="choice-card-btn">SELECT Q-1 ➡</div>
+          </div>
+
+          <div class="choice-card" onclick="quizApp.revealR2Question(2)">
+            <div class="choice-card-tag">OPTION 2</div>
+            <div class="choice-card-letter">Q - 2</div>
+            <div class="choice-card-btn">SELECT Q-2 ➡</div>
+          </div>
+        </div>
+
+        <div class="box-choice-actions">
+          <button class="btn-secondary" onclick="quizApp.showRound2Boxes()">
+            ⬅ BACK TO BOXES
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  revealR2Question(choiceNum) {
+    window.audioMgr.playClick();
+    const round = this.data.rounds[1];
+    const box = round.boxes.find(b => b.boxNum === this.currentBoxNum);
+    const q = box.questions[choiceNum - 1];
+    this.currentR2Question = q;
+
+    this.currentView = 'general-q';
+    this.questionStarted = false;
+    this.stopTimer();
+
+    this.dom.stage.className = 'stage-cover';
+    this.dom.header.classList.remove('hidden');
+    this.dom.timerContainer.classList.remove('hidden');
+    this.resetTimerDisplay();
+
+    this.dom.roundBadge.innerText = 'ROUND 2';
+    this.dom.qBadge.innerText = `BOX ${this.currentBoxNum} • ${q.choice} (${q.qCode})`;
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="question-stage-layout fade-in">
+        <!-- Ready / Start Timer Overlay -->
+        <div id="ready-gate-overlay" class="ready-gate-card">
+          <div class="ready-badge">ROUND 2 • BOX ${this.currentBoxNum} • ${q.choice}</div>
+          <h3 class="ready-prompt-title">Ready for ${q.choice}?</h3>
+          <p class="ready-prompt-sub">Timer will begin counting down (60 seconds) immediately upon reveal.</p>
+          <button id="btn-start-timer-reveal" class="btn-primary-glow btn-huge">
+            <span>⏱ START TIMER & REVEAL QUESTION</span>
+          </button>
+        </div>
+
+        <!-- Question Body -->
+        <div id="question-content-box" class="question-content-box question-blurred">
+          <div class="question-header-row">
+            <span class="q-number-pill">BOX ${this.currentBoxNum} - ${q.choice}</span>
+            <span class="q-points-pill">60 SECONDS</span>
+          </div>
+
+          <div class="question-text-container">
+            <h2 class="question-text-display">${q.text}</h2>
+          </div>
+
+          ${q.image ? `
+            <div class="media-display-zone">
+              <div class="image-wrapper">
+                <img src="${q.image}" alt="Question Image" class="stage-image" onclick="quizApp.zoomImage(this.src)">
+                <div class="media-zoom-hint">🔍 Click image to enlarge</div>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Answer Key Reveal (Judge Reference) -->
+          <div id="answer-key-box" class="answer-key-box hidden">
+            <div class="answer-label">OFFICIAL ANSWER REFERENCE:</div>
+            <div class="answer-value">${q.answer}</div>
+            ${q.hint ? `<div class="answer-hint">ℹ ${q.hint}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Bottom Judge & Return Bar -->
+        <div class="bottom-action-bar">
+          <div class="nav-button-group">
+            <button class="btn-control btn-return-boxes" onclick="quizApp.returnFromR2Question()">
+              📦 COMPLETE & RETURN TO BOX SELECTION
+            </button>
+          </div>
+
+          <div class="judge-quick-group">
+            <button class="btn-eval btn-correct" onclick="quizApp.evaluateAnswer(true)">
+              ✔ CORRECT ANSWER
+            </button>
+            <button class="btn-eval btn-wrong" onclick="quizApp.evaluateAnswer(false)">
+              ✖ WRONG ANSWER
+            </button>
+            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleAnswerKey()">
+              👁 SHOW ANSWER
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-start-timer-reveal').addEventListener('click', () => {
+      this.startQuestionTimer();
+    });
+  }
+
+  returnFromR2Question() {
+    window.audioMgr.playClick();
+    // Mark box as used and hide it!
+    if (this.currentBoxNum) {
+      this.r2UsedBoxes.add(this.currentBoxNum);
+    }
+    this.showRound2Boxes();
+  }
+
+  resetR2Boxes() {
+    if (confirm("Reset all boxes for Round 2?")) {
+      this.r2UsedBoxes.clear();
+      this.showRound2Boxes();
+    }
+  }
+
+  // ==========================================
+  // ROUND 4: CLUE ROUND (6 BOXES, 3 CLUES EACH)
+  // ==========================================
+
+  showRound4Boxes() {
+    this.currentView = 'r4-boxes';
+    this.stopTimer();
+
+    this.dom.stage.className = 'stage-cover';
+    this.dom.header.classList.remove('hidden');
+    this.dom.timerContainer.classList.add('hidden');
+
+    this.dom.roundBadge.innerText = 'ROUND 4';
+    this.dom.qBadge.innerText = 'CLUE ROUND BOXES';
+
+    const round = this.data.rounds[3];
+    const remainingCount = round.boxes.length - this.r4UsedBoxes.size;
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="box-selection-screen fade-in">
+        <div class="box-selection-header">
+          <div class="box-round-title">ROUND 4: THE CLUE ROUND</div>
+          <p class="box-selection-subtitle">
+            ${remainingCount > 1 
+              ? 'Click SPIN to rapidly cycle for 4 seconds and randomly select a clue box, or click an available box.' 
+              : 'FINAL REMAINING CLUE BOX! Click on it to view clues.'}
+          </p>
+        </div>
+
+        <div class="boxes-grid" id="r4-boxes-grid">
+          ${round.boxes.map(b => {
+            const isUsed = this.r4UsedBoxes.has(b.boxNum);
+            return `
+              <div 
+                id="r4-box-${b.boxNum}" 
+                class="quiz-box-card ${isUsed ? 'box-hidden' : ''}"
+                onclick="quizApp.onRound4BoxClick(${b.boxNum})"
+              >
+                <div class="box-inner-glow"></div>
+                <div class="box-folder-tab">CLUE BOX ${b.boxNum}</div>
+                <div class="box-front">
+                  <div class="box-icon">💡</div>
+                  <div class="box-number">BOX ${b.boxNum}</div>
+                  <div class="box-meta">3 Clues Inside</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <div class="box-selection-actions">
+          <button class="btn-secondary" onclick="quizApp.goToRoundGap(3)">
+            ⬅ ROUND OVERVIEW
+          </button>
+
+          <button 
+            id="btn-spin-r4" 
+            class="btn-primary-glow btn-spin ${this.isSpinning || remainingCount === 0 ? 'disabled' : ''}"
+            onclick="quizApp.spinRound4Boxes()"
+          >
+            <span>🎰 SPIN / RANDOM SELECT</span>
+          </button>
+
+          <button class="btn-control" onclick="quizApp.resetR4Boxes()">
+            🔄 RESET CLUE BOXES
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  spinRound4Boxes() {
+    if (this.isSpinning) return;
+    const round = this.data.rounds[3];
+    const available = round.boxes.filter(b => !this.r4UsedBoxes.has(b.boxNum));
+
+    if (available.length === 0) {
+      alert("All clue boxes have been selected for Round 4!");
+      return;
+    }
+
+    if (available.length === 1) {
+      this.selectRound4Box(available[0].boxNum);
+      return;
+    }
+
+    this.isSpinning = true;
+    const spinBtn = document.getElementById('btn-spin-r4');
+    if (spinBtn) spinBtn.classList.add('disabled');
+
+    // Pick a winner at random
+    const winner = available[Math.floor(Math.random() * available.length)];
+    const duration = 4000; // Exactly 4 seconds as requested
+    const startTime = Date.now();
+    let tickSpeed = 70; // Rapid tick in ms
+    let currentIdx = 0;
+
+    const cycle = () => {
+      const elapsed = Date.now() - startTime;
+
+      // Remove highlight from all
+      available.forEach(b => {
+        const el = document.getElementById(`r4-box-${b.boxNum}`);
+        if (el) el.classList.remove('box-highlighted');
+      });
+
+      // Highlight current
+      const activeBox = available[currentIdx % available.length];
+      const el = document.getElementById(`r4-box-${activeBox.boxNum}`);
+      if (el) el.classList.add('box-highlighted');
+      window.audioMgr.playSpinTick();
+
+      currentIdx++;
+
+      if (elapsed < duration) {
+        // Slow down slightly in the last 1.2 seconds
+        if (elapsed > duration - 1200) {
+          tickSpeed += 14;
+        }
+        setTimeout(cycle, tickSpeed);
+      } else {
+        // Spin finished! Lock into winner
+        available.forEach(b => {
+          const el = document.getElementById(`r4-box-${b.boxNum}`);
+          if (el) el.classList.remove('box-highlighted');
+        });
+
+        const winEl = document.getElementById(`r4-box-${winner.boxNum}`);
+        if (winEl) {
+          winEl.classList.add('box-selected-win');
+        }
+        window.audioMgr.playSpinLock();
+
+        setTimeout(() => {
+          this.isSpinning = false;
+          this.selectRound4Box(winner.boxNum);
+        }, 1200);
+      }
+    };
+
+    cycle();
+  }
+
+  onRound4BoxClick(boxNum) {
+    if (this.isSpinning || this.r4UsedBoxes.has(boxNum)) return;
+    this.selectRound4Box(boxNum);
+  }
+
+  selectRound4Box(boxNum) {
+    if (this.r4UsedBoxes.has(boxNum)) return;
+    this.currentBoxNum = boxNum;
+    this.currentR4ClueStep = 1;
+    this.currentView = 'r4-clue';
+    this.questionStarted = false;
+    this.stopTimer();
+
+    window.audioMgr.playClick();
+    const round = this.data.rounds[3];
+    const box = round.boxes.find(b => b.boxNum === boxNum);
+
+    this.dom.stage.className = 'stage-cover';
+    this.dom.header.classList.remove('hidden');
+    this.dom.timerContainer.classList.remove('hidden');
+    this.resetTimerDisplay();
+
+    this.dom.roundBadge.innerText = 'ROUND 4';
+    this.dom.qBadge.innerText = `CLUE BOX ${boxNum} • ${box.qCode}`;
+
+    this.renderClueQuestion(box);
+  }
+
+  renderClueQuestion(box) {
+    const clue1 = box.clues[0];
+    const clue2 = box.clues[1];
+    const clue3 = box.clues[2];
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="question-stage-layout clue-stage-layout fade-in">
+        <!-- Ready / Start Timer Overlay -->
+        <div id="ready-gate-overlay" class="ready-gate-card">
+          <div class="ready-badge">ROUND 4 • CLUE BOX ${this.currentBoxNum}</div>
+          <h3 class="ready-prompt-title">Ready for Clue 1?</h3>
+          <p class="ready-prompt-sub">Timer will begin 60-second countdown for the whole question.</p>
+          <button id="btn-start-timer-reveal" class="btn-primary-glow btn-huge">
+            <span>⏱ START TIMER & REVEAL CLUE 1</span>
+          </button>
+        </div>
+
+        <!-- Clue Question Content -->
+        <div id="question-content-box" class="question-content-box question-blurred">
+          <div class="question-header-row">
+            <span class="q-number-pill">CLUE BOX ${this.currentBoxNum} (${box.qCode})</span>
+            <span class="q-points-pill">60 SECONDS TOTAL</span>
+          </div>
+
+          <!-- Progressive Clues List -->
+          <div class="clues-stack">
+            <!-- CLUE 1 -->
+            <div id="clue-card-1" class="clue-item-card clue-active">
+              <div class="clue-badge-row">
+                <span class="clue-step-badge">CLUE 1</span>
+                <span class="clue-status-text">REVEALED AT START</span>
+              </div>
+              <div class="clue-text malayalam-text">${clue1.text}</div>
+              ${clue1.image ? `
+                <div class="clue-media-box">
+                  <img src="${clue1.image}" alt="Clue 1 Image" class="stage-image-clue" onclick="quizApp.zoomImage(this.src)">
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- CLUE 2 -->
+            <div id="clue-card-2" class="clue-item-card ${this.currentR4ClueStep >= 2 ? 'clue-active' : 'clue-locked'}">
+              <div class="clue-badge-row">
+                <span class="clue-step-badge">CLUE 2</span>
+                <span class="clue-status-text">${this.currentR4ClueStep >= 2 ? 'REVEALED' : 'LOCKED'}</span>
+              </div>
+              ${this.currentR4ClueStep >= 2 ? `
+                <div class="clue-text malayalam-text">${clue2.text}</div>
+                ${clue2.image ? `
+                  <div class="clue-media-box">
+                    <img src="${clue2.image}" alt="Clue 2 Image" class="stage-image-clue" onclick="quizApp.zoomImage(this.src)">
+                  </div>
+                ` : ''}
+              ` : `
+                <div class="clue-placeholder">
+                  <span>🔒 Clue 2 is locked. Click 'REVEAL CLUE 2' when requested by the team.</span>
+                </div>
+              `}
+            </div>
+
+            <!-- CLUE 3 -->
+            <div id="clue-card-3" class="clue-item-card ${this.currentR4ClueStep >= 3 ? 'clue-active' : 'clue-locked'}">
+              <div class="clue-badge-row">
+                <span class="clue-step-badge">CLUE 3</span>
+                <span class="clue-status-text">${this.currentR4ClueStep >= 3 ? 'REVEALED' : 'LOCKED'}</span>
+              </div>
+              ${this.currentR4ClueStep >= 3 ? `
+                <div class="clue-text malayalam-text">${clue3.text}</div>
+                ${clue3.image ? `
+                  <div class="clue-media-box">
+                    <img src="${clue3.image}" alt="Clue 3 Image" class="stage-image-clue" onclick="quizApp.zoomImage(this.src)">
+                  </div>
+                ` : ''}
+              ` : `
+                <div class="clue-placeholder">
+                  <span>🔒 Clue 3 is locked. Click 'REVEAL CLUE 3' when requested by the team.</span>
+                </div>
+              `}
+            </div>
+          </div>
+
+          <!-- Answer Key Reveal -->
+          <div id="answer-key-box" class="answer-key-box hidden">
+            <div class="answer-label">OFFICIAL ANSWER REFERENCE:</div>
+            <div class="answer-value">${box.answer}</div>
+            ${box.hint ? `<div class="answer-hint">ℹ ${box.hint}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Bottom Judge & Next Clue Bar -->
+        <div class="bottom-action-bar">
+          <div class="nav-button-group">
+            <button class="btn-control btn-return-boxes" onclick="quizApp.returnFromR4Question()">
+              📦 COMPLETE & RETURN TO BOXES
+            </button>
+            
+            ${this.currentR4ClueStep < 3 ? `
+              <button id="btn-next-clue" class="btn-primary-glow" onclick="quizApp.revealNextClue()">
+                <span>🔓 REVEAL CLUE ${this.currentR4ClueStep + 1} ➡</span>
+              </button>
+            ` : `
+              <button class="btn-control disabled" disabled>ALL 3 CLUES REVEALED</button>
+            `}
+          </div>
+
+          <div class="judge-quick-group">
+            <button class="btn-eval btn-correct" onclick="quizApp.evaluateAnswer(true)">
+              ✔ CORRECT ANSWER
+            </button>
+            <button class="btn-eval btn-wrong" onclick="quizApp.evaluateAnswer(false)">
+              ✖ WRONG ANSWER
+            </button>
+            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleAnswerKey()">
+              👁 SHOW ANSWER
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-start-timer-reveal').addEventListener('click', () => {
+      this.startQuestionTimer();
+    });
+  }
+
+  revealNextClue() {
+    if (this.currentR4ClueStep >= 3) return;
+    this.currentR4ClueStep++;
+    window.audioMgr.playClick();
+    const round = this.data.rounds[3];
+    const box = round.boxes.find(b => b.boxNum === this.currentBoxNum);
+    this.renderClueQuestion(box);
+
+    // Keep gate hidden and question visible since timer is already running
+    const gate = document.getElementById('ready-gate-overlay');
+    if (gate) gate.classList.add('gate-hidden');
+    const contentBox = document.getElementById('question-content-box');
+    if (contentBox) contentBox.classList.remove('question-blurred');
+  }
+
+  returnFromR4Question() {
+    window.audioMgr.playClick();
+    if (this.currentBoxNum) {
+      this.r4UsedBoxes.add(this.currentBoxNum);
+    }
+    this.showRound4Boxes();
+  }
+
+  resetR4Boxes() {
+    if (confirm("Reset all clue boxes for Round 4?")) {
+      this.r4UsedBoxes.clear();
+      this.showRound4Boxes();
+    }
+  }
+
+  // ==========================================
+  // FINISH / RESULTS SCREEN
+  // ==========================================
+
+  showFinishScreen() {
+    this.currentView = 'finish';
+    this.stopTimer();
+
+    this.dom.stage.className = 'stage-landing';
+    this.dom.header.classList.add('hidden');
+    this.dom.timerContainer.classList.add('hidden');
+
+    this.dom.viewContainer.innerHTML = `
+      <div class="finish-view-content fade-in">
+        <div class="finish-hero-backdrop"></div>
+        <div class="finish-card">
+          <div class="finish-badge">CAMPUS ARTS FEST 2026</div>
+          <h1 class="finish-title">QUIZ COMPETITION COMPLETED!</h1>
+          <p class="finish-subtitle">Congratulations to all participants and finalists for their outstanding performance.</p>
+
+          <div class="finish-scoreboard-preview">
+            <h3>FINAL SCOREBOARD</h3>
+            <div class="scores-table-grid">
+              ${this.teams.map((t, i) => `
+                <div class="score-row-item">
+                  <span class="score-team-rank">#${i + 1}</span>
+                  <span class="score-team-name">${t.name}</span>
+                  <span class="score-team-pts">${t.score} PTS</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="finish-actions">
+            <button class="btn-secondary" onclick="quizApp.showLanding()">
+              🏠 BACK TO HOME
+            </button>
+            <button class="btn-primary-glow" onclick="quizApp.toggleScoreboard()">
+              🏆 OPEN DETAILED SCOREBOARD
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    window.confetti.fire(5000);
+    window.audioMgr.playCorrect();
+  }
+
+  // ==========================================
+  // TIMER ENGINE & NFS WARNING COUNTDOWN
+  // ==========================================
+
+  startTimer(seconds = 60) {
+    this.stopTimer();
+    this.timerSeconds = seconds;
+    this.timerRunning = true;
+    this.updateTimerDisplay();
+
+    this.timerInterval = setInterval(() => {
+      this.timerSeconds--;
+      this.updateTimerDisplay();
+
+      // Last 10 seconds warning sound (NFS Most Wanted style)
+      if (this.timerSeconds <= 10 && this.timerSeconds > 0) {
+        window.audioMgr.playWarningBeep(this.timerSeconds);
+        this.pulseTimerWarning();
+      }
+
+      // Countdown finished
+      if (this.timerSeconds <= 0) {
+        this.stopTimer();
+        this.triggerTimeFinished();
+      }
+    }, 1000);
+  }
+
+  stopTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+    this.timerRunning = false;
+  }
+
+  toggleTimerPause() {
+    if (this.timerRunning) {
+      this.stopTimer();
+      window.audioMgr.playClick();
+    } else if (this.timerSeconds > 0) {
+      this.timerRunning = true;
+      this.timerInterval = setInterval(() => {
+        this.timerSeconds--;
+        this.updateTimerDisplay();
+        if (this.timerSeconds <= 10 && this.timerSeconds > 0) {
+          window.audioMgr.playWarningBeep(this.timerSeconds);
+          this.pulseTimerWarning();
+        }
+        if (this.timerSeconds <= 0) {
+          this.stopTimer();
+          this.triggerTimeFinished();
+        }
+      }, 1000);
+      window.audioMgr.playClick();
+    }
+  }
+
+  resetTimerDisplay() {
+    this.timerSeconds = 60;
+    this.updateTimerDisplay();
+  }
+
+  updateTimerDisplay() {
+    const s = Math.max(0, this.timerSeconds);
+    const formatted = s < 10 ? `0${s}` : `${s}`;
+    if (this.dom.timerSeconds) {
+      this.dom.timerSeconds.innerText = formatted;
+    }
+
+    // SVG Circle offset (total circumference = 2 * PI * 44 ≈ 276.46)
+    if (this.dom.timerSvgCircle) {
+      const circ = 276.46;
+      const progress = s / 60;
+      const offset = circ * (1 - progress);
+      this.dom.timerSvgCircle.style.strokeDashoffset = offset;
+
+      if (s <= 10) {
+        this.dom.timerSvgCircle.classList.add('timer-circle-warning');
+        this.dom.timerContainer.classList.add('timer-warning');
+      } else {
+        this.dom.timerSvgCircle.classList.remove('timer-circle-warning');
+        this.dom.timerContainer.classList.remove('timer-warning');
+      }
+    }
+  }
+
+  pulseTimerWarning() {
+    if (this.dom.timerContainer) {
+      this.dom.timerContainer.classList.add('timer-shake');
+      setTimeout(() => {
+        this.dom.timerContainer?.classList.remove('timer-shake');
+      }, 350);
+    }
+  }
+
+  triggerTimeFinished() {
+    window.audioMgr.playTimeFinished();
+    if (this.dom.timeOverModal) {
+      this.dom.timeOverModal.classList.remove('hidden');
+    }
+  }
+
+  // ==========================================
+  // JUDGE EVALUATION & FEEDBACK
+  // ==========================================
+
+  evaluateAnswer(isCorrect) {
+    if (isCorrect) {
+      window.audioMgr.playCorrect();
+      window.confetti.fire(3500);
+      this.showEvalBanner("Your answer is correct, Keep Going!", 'eval-correct');
+    } else {
+      window.audioMgr.playWrong();
+      this.showEvalBanner("Sorry, you have answered the wrong one", 'eval-wrong');
+    }
+  }
+
+  showEvalBanner(message, cssClass) {
+    if (!this.dom.evalBanner) return;
+    this.dom.evalText.innerText = message;
+    this.dom.evalBanner.className = `eval-banner ${cssClass} eval-visible`;
+
+    setTimeout(() => {
+      this.dom.evalBanner?.classList.remove('eval-visible');
+    }, 4500);
+  }
+
+  toggleAnswerKey() {
+    const box = document.getElementById('answer-key-box');
+    if (box) {
+      box.classList.toggle('hidden');
+      window.audioMgr.playClick();
+    }
+  }
+
+  // ==========================================
+  // MEDIA CONTROLS & ZOOM
+  // ==========================================
+
+  toggleAudio(audioSrc) {
+    const player = document.getElementById('q-audio-player');
+    const btnLabel = document.getElementById('audio-btn-label');
+    const btnIcon = document.getElementById('audio-btn-icon');
+    if (!player) return;
+
+    if (player.paused) {
+      player.play();
+      if (btnLabel) btnLabel.innerText = 'PAUSE AUDIO';
+      if (btnIcon) btnIcon.innerText = '⏸';
+      player.parentElement.classList.add('audio-playing');
+    } else {
+      player.pause();
+      if (btnLabel) btnLabel.innerText = 'PLAY AUDIO CLUE';
+      if (btnIcon) btnIcon.innerText = '▶';
+      player.parentElement.classList.remove('audio-playing');
+    }
+
+    player.onended = () => {
+      if (btnLabel) btnLabel.innerText = 'REPLAY AUDIO CLUE';
+      if (btnIcon) btnIcon.innerText = '🔄';
+      player.parentElement.classList.remove('audio-playing');
+    };
+  }
+
+  zoomImage(src) {
+    let zoomModal = document.getElementById('image-zoom-modal');
+    if (!zoomModal) {
+      zoomModal = document.createElement('div');
+      zoomModal.id = 'image-zoom-modal';
+      zoomModal.className = 'image-zoom-modal';
+      zoomModal.innerHTML = `
+        <div class="zoom-backdrop" onclick="this.parentElement.classList.add('hidden')"></div>
+        <div class="zoom-content">
+          <img id="zoom-img-target" src="" alt="Enlarged Visual">
+          <button class="zoom-close-btn" onclick="this.parentElement.parentElement.classList.add('hidden')">✕ CLOSE</button>
+        </div>
+      `;
+      document.body.appendChild(zoomModal);
+    }
+    document.getElementById('zoom-img-target').src = src;
+    zoomModal.classList.remove('hidden');
+  }
+
+  // ==========================================
+  // JUDGE DRAWER & SCOREBOARD
+  // ==========================================
+
+  toggleJudgeDrawer() {
+    if (this.dom.judgeDrawer) {
+      this.dom.judgeDrawer.classList.toggle('drawer-open');
+    }
+  }
+
+  closeJudgeDrawer() {
+    if (this.dom.judgeDrawer) {
+      this.dom.judgeDrawer.classList.remove('drawer-open');
+    }
+  }
+
+  toggleScoreboard() {
+    if (this.dom.scoresModal) {
+      this.dom.scoresModal.classList.toggle('hidden');
+      this.renderScoreboard();
+    }
+  }
+
+  closeScoreboard() {
+    if (this.dom.scoresModal) {
+      this.dom.scoresModal.classList.add('hidden');
+    }
+  }
+
+  renderScoreboard() {
+    const listEl = document.getElementById('scoreboard-teams-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = this.teams.map((t, idx) => `
+      <div class="scoreboard-row">
+        <div class="team-info">
+          <span class="team-index">${idx + 1}</span>
+          <input type="text" class="team-name-input" value="${t.name}" onchange="quizApp.updateTeamName(${idx}, this.value)">
+        </div>
+        <div class="team-score-controls">
+          <button class="score-adjust-btn" onclick="quizApp.adjustScore(${idx}, -5)">-5</button>
+          <button class="score-adjust-btn" onclick="quizApp.adjustScore(${idx}, -10)">-10</button>
+          <span class="team-score-num">${t.score}</span>
+          <button class="score-adjust-btn btn-plus" onclick="quizApp.adjustScore(${idx}, 5)">+5</button>
+          <button class="score-adjust-btn btn-plus" onclick="quizApp.adjustScore(${idx}, 10)">+10</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  adjustScore(teamIdx, delta) {
+    if (this.teams[teamIdx]) {
+      this.teams[teamIdx].score += delta;
+      window.audioMgr.playClick();
+      this.renderScoreboard();
+    }
+  }
+
+  updateTeamName(teamIdx, newName) {
+    if (this.teams[teamIdx]) {
+      this.teams[teamIdx].name = newName;
+    }
+  }
+
+  navigateNext() {
+    if (this.currentView === 'general-q') {
+      this.nextGeneralQuestion();
+    }
+  }
+
+  navigateBack() {
+    if (this.currentView === 'general-q') {
+      this.prevGeneralQuestion();
+    }
+  }
+}
+
+// Instantiate and attach to window
+window.quizApp = new QuizApp();
+window.addEventListener('DOMContentLoaded', () => {
+  window.quizApp.init();
+});

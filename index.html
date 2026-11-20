@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Competition | Campus Arts Fest 2026</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/png" href="quizassets/round1-q8img.png">
+</head>
+<body>
+  <div id="app-viewport">
+    <div id="quiz-stage" class="stage-landing">
+
+      <!-- STAGE TOP DOCK / HEADER -->
+      <header id="stage-header" class="hidden">
+        <div class="header-left">
+          <button class="btn-icon-brand" onclick="quizApp.showLanding()">
+            <span>🏠</span>
+            <span>HOME</span>
+          </button>
+          <span id="header-round-badge" class="stage-badge round-badge">ROUND 1</span>
+          <span id="header-q-badge" class="stage-badge q-badge">QUESTION 01</span>
+        </div>
+
+        <div class="header-right">
+          <!-- 60-Second Circular Countdown Widget -->
+          <div id="stage-timer-widget" class="hidden">
+            <div class="timer-ring-container">
+              <svg class="timer-svg" viewBox="0 0 100 100">
+                <circle class="timer-bg-circle" cx="50" cy="50" r="44"></circle>
+                <circle id="timer-progress-circle" class="timer-progress-circle" cx="50" cy="50" r="44"></circle>
+              </svg>
+            </div>
+            <div class="timer-digital-box">
+              <span id="timer-seconds-display" class="timer-digits">60</span>
+              <span class="timer-label">SEC LEFT</span>
+            </div>
+          </div>
+
+          <!-- Scoreboard Button -->
+          <button id="scoreboard-btn" class="btn-scoreboard-pill">
+            <span>🏆</span>
+            <span>SCORES</span>
+          </button>
+
+          <!-- Sound Mute/Unmute -->
+          <button id="btn-toggle-sound" class="btn-stage-icon" title="Toggle Sound FX">🔊</button>
+
+          <!-- Fullscreen Toggle -->
+          <button id="btn-fullscreen" class="btn-stage-icon" title="Toggle Fullscreen (F)">⛶</button>
+
+          <!-- Judge Quick Menu -->
+          <button id="btn-judge-menu" class="btn-stage-icon" title="Judge Navigation (J)">⚙</button>
+        </div>
+      </header>
+
+      <!-- ACTIVE STAGE CANVAS -->
+      <main id="stage-content"></main>
+
+      <!-- FLOATING EVALUATION BANNER -->
+      <div id="eval-banner" class="eval-banner">
+        <span id="eval-text">Your answer is correct, Keep Going!</span>
+      </div>
+
+      <!-- TIME OVER MODAL -->
+      <div id="time-over-modal" class="time-over-modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="time-over-card">
+          <div class="time-over-icon">⏰</div>
+          <h2 class="time-over-title">TIME FINISHED!</h2>
+          <p class="time-over-desc">The 60-second time limit for this question has expired.</p>
+          <button id="btn-dismiss-timeover" class="btn-primary-glow btn-large">
+            <span>🔍 REVIEW QUESTION & EVALUATE</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SCOREBOARD MODAL -->
+      <div id="scores-modal" class="scores-modal hidden">
+        <div class="modal-backdrop" onclick="quizApp.closeScoreboard()"></div>
+        <div class="scores-card">
+          <div class="scores-card-header">
+            <h2>🏆 LIVE TEAM SCOREBOARD</h2>
+            <button id="scores-modal-close" class="scores-close-btn">✕</button>
+          </div>
+          <div id="scoreboard-teams-list" class="scoreboard-teams-list"></div>
+        </div>
+      </div>
+
+      <!-- JUDGE CONTROL DRAWER -->
+      <aside id="judge-drawer" class="judge-drawer">
+        <div class="drawer-header">
+          <h3>JUDGE MASTER CONTROLS</h3>
+          <button id="judge-drawer-close" class="drawer-close-btn">✕</button>
+        </div>
+        <div class="drawer-body">
+          <div class="drawer-section">
+            <div class="drawer-section-title">QUICK ROUND JUMP</div>
+            <div class="drawer-buttons">
+              <button class="drawer-btn" onclick="quizApp.goToRoundGap(0); quizApp.closeJudgeDrawer();">Round 1: General Round (11 Qs)</button>
+              <button class="drawer-btn" onclick="quizApp.goToRoundGap(1); quizApp.closeJudgeDrawer();">Round 2: Highlight Box Spin (6 Boxes)</button>
+              <button class="drawer-btn" onclick="quizApp.goToRoundGap(2); quizApp.closeJudgeDrawer();">Round 3: General Round (5 Qs)</button>
+              <button class="drawer-btn" onclick="quizApp.goToRoundGap(3); quizApp.closeJudgeDrawer();">Round 4: Clue Round (6 Boxes)</button>
+              <button class="drawer-btn" onclick="quizApp.goToRoundGap(4); quizApp.closeJudgeDrawer();">Round 5: Grand Finale (5 Qs)</button>
+            </div>
+          </div>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">BOX MANAGEMENT</div>
+            <div class="drawer-buttons">
+              <button class="drawer-btn" onclick="quizApp.resetR2Boxes()">🔄 Reset Round 2 Boxes</button>
+              <button class="drawer-btn" onclick="quizApp.resetR4Boxes()">🔄 Reset Round 4 Clue Boxes</button>
+            </div>
+          </div>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">KEYBOARD SHORTCUTS</div>
+            <div class="hotkeys-list">
+              <div><span>Start Timer / Next Clue</span> <kbd>Space</kbd></div>
+              <div><span>Mark Correct Answer</span> <kbd>C</kbd></div>
+              <div><span>Mark Wrong Answer</span> <kbd>W</kbd></div>
+              <div><span>Toggle Official Answer</span> <kbd>A</kbd></div>
+              <div><span>Pause / Resume Timer</span> <kbd>P</kbd></div>
+              <div><span>Next Question</span> <kbd>→</kbd></div>
+              <div><span>Previous Question</span> <kbd>←</kbd></div>
+              <div><span>Toggle Fullscreen</span> <kbd>F</kbd></div>
+              <div><span>Judge Controls</span> <kbd>J</kbd></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- APPLICATION SCRIPTS -->
+  <script src="js/quizData.js"></script>
+  <script src="js/audioManager.js"></script>
+  <script src="js/confetti.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
