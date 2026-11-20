@@ -19,10 +19,11 @@ const QUIZ_DATA = {
       subtitle: "General Knowledge & Awareness",
       type: "general",
       totalQuestions: 11,
+      durationSeconds: 30, // 30 seconds
       description: "11 Common questions for all teams. Questions contain video, audio, and images.",
       rules: [
         "11 Common Questions for all participating teams.",
-        "60 Seconds per question with countdown timer.",
+        "30 Seconds per question with live countdown timer.",
         "Audio and video media will be played on presenter command.",
         "Final 10 seconds warning sound will alert the teams."
       ],
@@ -33,8 +34,8 @@ const QUIZ_DATA = {
           qNum: 1,
           text: "Identify the person speaking in this video?",
           video: "quizassets/round1-q1video.mp4",
-          answer: "Check video speaker",
-          hint: "Watch facial features and voice tone carefully."
+          answer: "Abdul El-Sayed (Abdulrahman Mohamed El-Sayed)",
+          hint: "Physician, epidemiologist, and progressive political commentator."
         },
         {
           id: "r1-q2",
@@ -43,8 +44,8 @@ const QUIZ_DATA = {
           text: "This is the tagline of which company?",
           image: "quizassets/round1-q2img.png",
           audio: "quizassets/round1-q2audio.mp3",
-          answer: "Nokia ('Connecting People' & iconic Nokia tune)",
-          hint: "The world-famous Finnish telecommunications and mobile pioneer."
+          answer: "NOKIA",
+          hint: "'Connecting People' & the iconic Nokia tune."
         },
         {
           id: "r1-q3",
@@ -52,8 +53,8 @@ const QUIZ_DATA = {
           qNum: 3,
           text: "What does the Korean word 'Samsung' mean?",
           image: "quizassets/round1-q3img.jpeg",
-          answer: "Three Stars (Sam = Three, Sung = Stars)",
-          hint: "Symbolizing something big, numerous and powerful like stars in the sky."
+          answer: "3 STARS",
+          hint: "Sam = Three, Sung = Stars (meaning big, numerous and bright)."
         },
         {
           id: "r1-q4",
@@ -61,7 +62,7 @@ const QUIZ_DATA = {
           qNum: 4,
           text: "Name the Kerala startup that had Lionel Messi as its brand ambassador?",
           image: "quizassets/round1-q4img.png",
-          answer: "BYJU'S (Founded by Byju Raveendran from Azhikode, Kannur)",
+          answer: "BYJU'S APP",
           hint: "Lionel Messi was global ambassador for 'Education For All' initiative."
         },
         {
@@ -70,8 +71,8 @@ const QUIZ_DATA = {
           qNum: 5,
           text: "In 'E20 Petrol', what does 'E' stand for?",
           image: "quizassets/round1-q5img.jpeg",
-          answer: "Ethanol (20% Ethanol blended with gasoline/petrol)",
-          hint: "A biofuel produced largely from sugarcane and grains."
+          answer: "ETHANOL",
+          hint: "20% Ethanol blended with petrol."
         },
         {
           id: "r1-q6",
@@ -79,7 +80,7 @@ const QUIZ_DATA = {
           qNum: 6,
           text: "The BMW logo colors are taken from the flag of which state?",
           image: "quizassets/round1-q6img.jpeg",
-          answer: "Bavaria (Free State of Bavaria, Germany)",
+          answer: "Bavaria (Bayern)",
           hint: "The blue and white quarters represent the Bavarian state flag."
         },
         {
@@ -88,8 +89,8 @@ const QUIZ_DATA = {
           qNum: 7,
           text: "Google is a misspelling of the word 'Googol'. What is the mathematical meaning of 'Googol'?",
           image: "quizassets/round1-q7img.jpeg",
-          answer: "1 followed by 100 zeros (10¹⁰⁰)",
-          hint: "Coined in 1920 by 9-year-old Milton Sirotta, nephew of mathematician Edward Kasner."
+          answer: "A googol is the number 1 followed by 100 zeros, written mathematically as 10¹⁰⁰.",
+          hint: "10 raised to the power of 100."
         },
         {
           id: "r1-q8",
@@ -98,7 +99,7 @@ const QUIZ_DATA = {
           text: "Who designed the Apple logo?",
           image: "quizassets/round1-q8img.png",
           answer: "Rob Janoff",
-          hint: "Created the rainbow apple silhouette with a bite in 1977."
+          hint: "Created the iconic rainbow apple with a bite in 1977."
         },
         {
           id: "r1-q9",
@@ -106,8 +107,8 @@ const QUIZ_DATA = {
           qNum: 9,
           text: "What initiative is this logo related to?",
           image: "quizassets/round1-q9img.png",
-          answer: "Fit India Movement (launched by Govt of India)",
-          hint: "National initiative promoting physical fitness and healthy lifestyle."
+          answer: "PM SHRI",
+          hint: "PM Schools for Rising India scheme."
         },
         {
           id: "r1-q10",
@@ -115,8 +116,8 @@ const QUIZ_DATA = {
           qNum: 10,
           text: "Identify the sports personality in this faded image?",
           image: "quizassets/round1-q10img.jpeg",
-          answer: "Lionel Messi (FIFA World Cup 2022 Champions celebration)",
-          hint: "Argentina football legend celebrating with the World Cup trophy."
+          answer: "LAMIN YAMAL",
+          hint: "Spanish sensation and UEFA Euro young star."
         },
         {
           id: "r1-q11",
@@ -124,8 +125,8 @@ const QUIZ_DATA = {
           qNum: 11,
           text: "In which district is this statue located?",
           image: "quizassets/round1-q11img.png",
-          answer: "Kollam (Jatayu Earth's Center, Chadayamangalam)",
-          hint: "The world's largest bird sculpture in southern Kerala."
+          answer: "KASARAGOD",
+          hint: "Northernmost district of Kerala."
         }
       ]
     },
@@ -135,13 +136,15 @@ const QUIZ_DATA = {
       subtitle: "The Highlight Box Selection Round",
       type: "box-choice",
       totalBoxes: 6,
+      durationSeconds: 60, // 1 minute
       description: "6 Sets of Mystery Boxes. Click SPIN to highlight boxes fast for 4 seconds and randomly choose. Each box offers Q-1 and Q-2.",
       rules: [
         "6 Mystery boxes displayed on screen.",
         "Judge clicks 'SPIN' to highlight boxes rapidly for 4 seconds, stopping randomly on one box.",
         "Each box reveals two question choices: Q-1 and Q-2.",
         "The team selects one question; the judge clicks to reveal it.",
-        "60 Seconds per question with live warning countdown.",
+        "1 Minute (60 Seconds) countdown with live warning sounds.",
+        "Showing answer features a dramatic 5-second countdown with suspense sounds!",
         "Returning to box selection hides the completed box for remaining teams."
       ],
       boxes: [
@@ -155,8 +158,8 @@ const QUIZ_DATA = {
               choice: "Q-1",
               text: "Identify the animal featured in the logo of Qatar Airways?",
               image: "quizassets/round2-b1-q1img.jpeg",
-              answer: "Arabian Oryx (Al Maha)",
-              hint: "The national animal of Qatar, a white antelope with long pointed horns."
+              answer: "Arabian Oryx",
+              hint: "National animal of Qatar, an antelope with long pointed horns."
             },
             {
               id: "r2-b1-q2",
@@ -164,8 +167,8 @@ const QUIZ_DATA = {
               choice: "Q-2",
               text: "The name Starbucks was inspired by a character from which classic novel?",
               image: "quizassets/round2-b1-q2img.jpeg",
-              answer: "Moby-Dick (by Herman Melville - character: Starbuck)",
-              hint: "Starbuck was the chief mate aboard the whaling ship Pequod."
+              answer: "Moby-Dick",
+              hint: "Starbuck, first mate of the whaling ship Pequod by Herman Melville."
             }
           ]
         },
@@ -179,8 +182,8 @@ const QUIZ_DATA = {
               choice: "Q-1",
               text: "After facing a nationwide ban in India, which famous brand made a massive comeback using this emotional tagline 'We Miss You Too'?",
               image: "quizassets/round2-b2-q1img.png",
-              answer: "Maggi Noodles (Nestlé India)",
-              hint: "Returned to the market in November 2015 with heart-warming commercials."
+              answer: "Maggi",
+              hint: "Nestlé India instant noodle brand."
             },
             {
               id: "r2-b2-q2",
@@ -188,8 +191,8 @@ const QUIZ_DATA = {
               choice: "Q-2",
               text: "Identify the iconic Indian-made cola beverage that uses the famous tagline 'India Ka Thanda' or 'The Great Indian Taste'?",
               image: "quizassets/round2-b2-q2img.png",
-              answer: "Campa Cola / Thums Up (Campa Cola)",
-              hint: "The home-grown cola created in the late 1970s and relaunched recently."
+              answer: "Campa Cola",
+              hint: "Iconic homegrown Indian cola brand."
             }
           ]
         },
@@ -203,8 +206,8 @@ const QUIZ_DATA = {
               choice: "Q-1",
               text: "Which global brand adopted its world-famous tagline, inspired by the final words of a convict just before his execution?",
               image: "quizassets/round2-b3-q1img.jpg",
-              answer: "Nike ('Just Do It')",
-              hint: "Dan Wieden coined it in 1988, inspired by death row convict Gary Gilmore's last words 'Let's do it'."
+              answer: "Nike",
+              hint: "'Just Do It', inspired by Gary Gilmore's last words."
             },
             {
               id: "r2-b3-q2",
@@ -212,8 +215,8 @@ const QUIZ_DATA = {
               choice: "Q-2",
               text: "Identify the new bill recently introduced by the Government of Kerala based on this motto ONE STATE, ONE APPROVAL, ONE DOCUMENT (OSAD)?",
               image: "quizassets/round2-b3-q2img.png",
-              answer: "Kerala Investment Promotion and Facilitation Bill (K-SWIFT / OSAD Bill)",
-              hint: "A landmark ease-of-doing-business reform for industrial clearances."
+              answer: "SARAL BILL",
+              hint: "One State, One Approval, One Document initiative."
             }
           ]
         },
@@ -227,8 +230,8 @@ const QUIZ_DATA = {
               choice: "Q-1",
               text: "Who is the renowned advertising professional who coined the famous tourism tagline 'God's Own Country' for Kerala?",
               image: "quizassets/round2-b4-q1img.png",
-              answer: "Walter Mendez (Mudra Communications)",
-              hint: "Created the historic campaign for Kerala Tourism in 1989."
+              answer: "Walter Mendez",
+              hint: "Mudra Communications creative director in 1989."
             },
             {
               id: "r2-b4-q2",
@@ -236,8 +239,8 @@ const QUIZ_DATA = {
               choice: "Q-2",
               text: "This recently released book by Jijo Abraham is the sequel (second part) to which famous novel?",
               image: "quizassets/round2-b4-q2img.jpeg",
-              answer: "Francis Itty Cora (ഫ്രാൻസിസ് ഇട്ടിക്കോര - Novel by TD Ramakrishnan)",
-              hint: "The book shown is 'സ്ത്രീയേ, ഇതാ നിന്റെ മകൻ' (Streeye, Itha Ninte Makan)."
+              answer: "Kambilikandathe Kalibharanikal",
+              hint: "Sequel work by Jijo Abraham."
             }
           ]
         },
@@ -251,8 +254,8 @@ const QUIZ_DATA = {
               choice: "Q-1",
               text: "What is the specific name given to this calligraphic monogram or official seal used by the Sultans of the Ottoman Empire?",
               image: "quizassets/round2-b5-q1img.jpeg",
-              answer: "Tughra (തുഗ്റ / Tuğra)",
-              hint: "An elaborate imperial signature affixed to all official decrees and coins."
+              answer: "Thugra",
+              hint: "Tuğra - Imperial calligraphic monogram of Ottoman Sultans."
             },
             {
               id: "r2-b5-q2",
@@ -260,8 +263,8 @@ const QUIZ_DATA = {
               choice: "Q-2",
               text: "Identify the names of these two official mascots of the Census of India?",
               image: "quizassets/round2-b5-q2img.jpeg",
-              answer: "Female Enumerator (Census Lady) & Master Census (Male Enumerator)",
-              hint: "Introduced to represent the field workers gathering census data across the country."
+              answer: "Pragathi or Vikas",
+              hint: "Census of India mascots."
             }
           ]
         },
@@ -275,8 +278,8 @@ const QUIZ_DATA = {
               choice: "Q-1",
               text: "The common brand introduced by the Government of Kerala for local products is called ___?",
               image: "quizassets/round2-b6-q1img.jpeg",
-              answer: "Kerala Brand ('Nanma' / 'Kerala Brand')",
-              hint: "Certification initiative ensuring high quality and authenticity for Made-in-Kerala goods."
+              answer: "KERALA BRAND",
+              hint: "Certification mark for local goods."
             },
             {
               id: "r2-b6-q2",
@@ -284,8 +287,8 @@ const QUIZ_DATA = {
               choice: "Q-2",
               text: "Which company does the third logo belong to?",
               image: "quizassets/round2-b6-q2img.png",
-              answer: "iD Fresh Food (Bengaluru-based packaged batter and food company)",
-              hint: "Founded by PC Musthafa from Wayanad, Kerala."
+              answer: "Godrej",
+              hint: "Prominent Indian conglomerate."
             }
           ]
         }
@@ -297,11 +300,13 @@ const QUIZ_DATA = {
       subtitle: "General Knowledge & Rapid Observation",
       type: "general",
       totalQuestions: 5,
+      durationSeconds: 40, // 40 seconds
       description: "5 Common questions for all teams. Identify brands, records, history, and current affairs.",
       rules: [
         "5 General questions for all participating teams.",
-        "60 Seconds per question with live warning countdown.",
-        "Visuals and audio will be presented on screen."
+        "40 Seconds per question with live countdown timer.",
+        "Visuals and audio presented on screen.",
+        "Final 10 seconds warning sound will alert the teams."
       ],
       questions: [
         {
@@ -310,8 +315,8 @@ const QUIZ_DATA = {
           qNum: 1,
           text: "Guess the brand?",
           image: "quizassets/round3-q1img.jpeg",
-          answer: "KFC (Kentucky Fried Chicken - Colonel Harland Sanders)",
-          hint: "The world-famous fried chicken restaurant chain."
+          answer: "KFC",
+          hint: "Kentucky Fried Chicken - Colonel Harland Sanders."
         },
         {
           id: "r3-q2",
@@ -319,8 +324,8 @@ const QUIZ_DATA = {
           qNum: 2,
           text: "What does V stand for?",
           image: "quizassets/round3-q2img.jpeg",
-          answer: "Voltage (V-Guard = Voltage Guard)",
-          hint: "Founded by Kochouseph Chittilappilly in 1977 as a voltage stabilizer maker."
+          answer: "Voltage",
+          hint: "V-Guard = Voltage Guard."
         },
         {
           id: "r3-q3",
@@ -328,8 +333,8 @@ const QUIZ_DATA = {
           qNum: 3,
           text: "In which well was the Prophet Muhammad's seal ring lost?",
           image: "quizassets/round3-q3img.jpeg",
-          answer: "Well of Aris (Bi'r Aris / بئر أريس - near Masjid Quba, Madinah)",
-          hint: "Slipped from the finger of Caliph Uthman ibn Affan (RA) into this historic well."
+          answer: "BER Aries (or B.E.R. Aries)",
+          hint: "Historic well in Madinah near Quba Mosque."
         },
         {
           id: "r3-q4",
@@ -337,8 +342,8 @@ const QUIZ_DATA = {
           qNum: 4,
           text: "Who is the minister in charge of India's first AI department?",
           image: "quizassets/round3-q4img.jpeg",
-          answer: "P. Rajeev (Minister for Law, Industries and Coir, Kerala)",
-          hint: "Kerala became the first state in India to establish a dedicated AI ministerial department."
+          answer: "P. K. Kunhalikutty",
+          hint: "Senior leader and former minister from Kerala."
         },
         {
           id: "r3-q5",
@@ -346,8 +351,8 @@ const QUIZ_DATA = {
           qNum: 5,
           text: "What unique world record does he hold?",
           image: "quizassets/round3-q5img.jpeg",
-          answer: "Andrea Kimi Antonelli (Mercedes F1 Driver) - Youngest Italian to start an F1 GP / Multi-category Champion",
-          hint: "Italian prodigy signed to drive for Mercedes-AMG Petronas F1 Team."
+          answer: "Kimi Antonelli (won in 2026 at age 20, breaking Sebastian Vettel's previous record of 23)",
+          hint: "Mercedes F1 driver and historic record holder."
         }
       ]
     },
@@ -357,12 +362,13 @@ const QUIZ_DATA = {
       subtitle: "The Clue Round",
       type: "clue-box",
       totalBoxes: 6,
+      durationSeconds: 60, // 1 minute
       description: "6 Mystery Boxes. Click SPIN to highlight boxes fast for 4 seconds and randomly choose. Each box contains 1 question with 3 successive clues. 1 minute total.",
       rules: [
-        "6 Mystery boxes displayed on screen.",
+        "6 Mystery boxes displayed on screen with interactive SPIN randomizer.",
         "Judge clicks 'SPIN' to highlight boxes rapidly for 4 seconds, stopping randomly on one box.",
         "Each box contains 1 question with 3 progressive clues.",
-        "Timer is 60 SECONDS TOTAL for all clues (not per clue).",
+        "Timer is 1 MINUTE (60 SECONDS TOTAL) for all clues (not per clue).",
         "Clue 1 appears when question starts.",
         "Judge clicks 'Next Clue' to reveal Clue 2 and Clue 3 when requested.",
         "After completion, returning to box selection hides the used box."
@@ -372,8 +378,8 @@ const QUIZ_DATA = {
           boxNum: 1,
           label: "Box 1",
           qCode: "B-1-1",
-          answer: "NVIDIA (എൻവിഡിയ)",
-          hint: "American tech giant founded by Jensen Huang, dominance in GPU and AI hardware.",
+          answer: "Nvidia",
+          hint: "Dominant AI chipmaker, Jensen Huang.",
           clues: [
             {
               clueNum: 1,
@@ -399,8 +405,8 @@ const QUIZ_DATA = {
           boxNum: 2,
           label: "Box 2",
           qCode: "B-2-1",
-          answer: "Elon Musk (ഇലോൺ മസ്ക്)",
-          hint: "World's richest entrepreneur, head of Tesla, SpaceX, xAI, Neuralink and X.",
+          answer: "Elon Musk",
+          hint: "Head of Tesla, SpaceX, xAI, Neuralink and X.",
           clues: [
             {
               clueNum: 1,
@@ -426,8 +432,8 @@ const QUIZ_DATA = {
           boxNum: 3,
           label: "Box 3",
           qCode: "B-3-1",
-          answer: "Andhra Pradesh (ആന്ധ്രാപ്രദേശ്)",
-          hint: "Southern Indian state with its planned capital at Amaravati on the banks of Krishna River.",
+          answer: "Andhra Pradesh",
+          hint: "Southern state, Amaravati capital, Kohinoor of India.",
           clues: [
             {
               clueNum: 1,
@@ -453,8 +459,8 @@ const QUIZ_DATA = {
           boxNum: 4,
           label: "Box 4",
           qCode: "B-4-1",
-          answer: "Sanju Samson (സഞ്ജു സാംസൺ)",
-          hint: "Indian international cricketer and Rajasthan Royals captain from Thiruvananthapuram.",
+          answer: "Sanju Samson",
+          hint: "Captain of Kerala, Malappuram FC co-owner, EPL ambassador.",
           clues: [
             {
               clueNum: 1,
@@ -480,8 +486,8 @@ const QUIZ_DATA = {
           boxNum: 5,
           label: "Box 5",
           qCode: "B-5-1",
-          answer: "Britannia Industries (ബ്രിട്ടാനിയ ഇൻഡസ്ട്രീസ്)",
-          hint: "Leading Indian food products company famous for Good Day, Marie Gold, Tiger and 50-50.",
+          answer: "Britannia",
+          hint: "Famous biscuit giant founded in Kolkata in 1892.",
           clues: [
             {
               clueNum: 1,
@@ -507,8 +513,8 @@ const QUIZ_DATA = {
           boxNum: 6,
           label: "Box 6",
           qCode: "B-6-1",
-          answer: "Turkey / Türkiye (തുർക്കി)",
-          hint: "Eurasian nation straddling Eastern Europe and Western Asia, flag features crescent and star.",
+          answer: "Turkey",
+          hint: "Turkish Airlines 'Widen Your World', COP31 Antalya, Hagia Sophia.",
           clues: [
             {
               clueNum: 1,
@@ -538,11 +544,13 @@ const QUIZ_DATA = {
       subtitle: "The Grand Finale Round",
       type: "general",
       totalQuestions: 5,
+      durationSeconds: 40, // 40 seconds
       description: "5 Final decisive questions for all teams. Identify logos, country of origin, odd pair, economics, and personality.",
       rules: [
         "5 Final questions for the competition.",
-        "60 Seconds countdown per question.",
-        "Visual inspection and sharp deduction required."
+        "40 Seconds countdown per question.",
+        "Visual inspection and sharp deduction required.",
+        "Final 10 seconds warning sound will alert the teams."
       ],
       questions: [
         {
@@ -551,8 +559,8 @@ const QUIZ_DATA = {
           qNum: 1,
           text: "Which of these is the latest McDonald's logo?",
           image: "quizassets/round5-q1img.png",
-          answer: "The minimalist pure Golden Arches without frame/shadow",
-          hint: "McDonald's modern flat corporate identity."
+          answer: "Option C",
+          hint: "Option C - The current McDonald's golden arches."
         },
         {
           id: "r5-q2",
@@ -560,17 +568,17 @@ const QUIZ_DATA = {
           qNum: 2,
           text: "Which country do all these brands originate from?",
           image: "quizassets/round5-q2img.jpeg",
-          answer: "Sweden (IKEA, H&M, Spotify, Ericsson, Volvo)",
-          hint: "Scandinavian powerhouse known for design, tech, and innovation."
+          answer: "Sweden",
+          hint: "IKEA, H&M, Spotify, Ericsson, Volvo all hail from Sweden."
         },
         {
           id: "r5-q3",
-          round: 5,
+          round: 3,
           qNum: 3,
           text: "Find the odd one out from the given pairs?",
           image: "quizassets/round5-q3img.jpeg",
-          answer: "c. HORSE - LAMBORGHINI (Lamborghini's emblem is a Raging Bull, not a horse)",
-          hint: "Ferrari and Porsche feature a horse; Lamborghini features the Ferruccio Lamborghini bull."
+          answer: "Option C\n(Horse = Lamborghini ❎ | Bull = Lamborghini ✅)",
+          hint: "Lamborghini's emblem is the Raging Bull, not a horse."
         },
         {
           id: "r5-q4",
@@ -578,8 +586,8 @@ const QUIZ_DATA = {
           qNum: 4,
           text: "In economics, whose needs does the 'Silver Economy' refer to?",
           image: null,
-          answer: "Senior Citizens / Elderly (The Ageing Population, aged 50+ / 60+)",
-          hint: "Refers to the system of production, distribution and consumption of goods and services aimed at utilizing the purchasing potential of older people."
+          answer: "The Silver Economy is related to elderly people or senior citizens.",
+          hint: "Economic activities catering to the ageing population."
         },
         {
           id: "r5-q5",
@@ -587,8 +595,8 @@ const QUIZ_DATA = {
           qNum: 5,
           text: "Who am I?",
           image: "quizassets/round5-q5img.jpeg",
-          answer: "Booker Prize Author / Samantha Harvey (or M.J. Harrison / Booker Nominee)",
-          hint: "Author of the Booker Prize listed work shown next to the prestigious trophy."
+          answer: "M. John Harrison",
+          hint: "Author of 'The End of Everything'."
         }
       ]
     }

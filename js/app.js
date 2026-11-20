@@ -14,6 +14,7 @@ class QuizApp {
     this.currentR4ClueStep = 1; // 1, 2, or 3 for R4
     
     // Timer state
+    this.currentDuration = 60; // 30s, 40s, or 60s
     this.timerSeconds = 60;
     this.timerRunning = false;
     this.timerInterval = null;
@@ -23,8 +24,11 @@ class QuizApp {
     this.r2UsedBoxes = new Set();
     this.r4UsedBoxes = new Set();
 
-    // R2 Spin state
+    // R2 / R4 Spin state
     this.isSpinning = false;
+
+    // Answer Countdown state (Round 2)
+    this.answerCountdownTimer = null;
 
     // Teams & Scoreboard
     this.teams = [
@@ -70,6 +74,16 @@ class QuizApp {
     this.dom.evalText = document.getElementById('eval-text');
     this.dom.judgeDrawer = document.getElementById('judge-drawer');
     this.dom.scoresModal = document.getElementById('scores-modal');
+
+    // Answer Reveal Modal
+    this.dom.answerModal = document.getElementById('answer-modal');
+    this.dom.answerCountdownView = document.getElementById('answer-countdown-view');
+    this.dom.countdownNumber = document.getElementById('countdown-number');
+    this.dom.answerRevealCard = document.getElementById('answer-reveal-card');
+    this.dom.answerModalBadge = document.getElementById('answer-modal-badge');
+    this.dom.answerModalQText = document.getElementById('answer-modal-qtext');
+    this.dom.answerModalValue = document.getElementById('answer-modal-value');
+    this.dom.answerModalHint = document.getElementById('answer-modal-hint');
   }
 
   bindEvents() {
@@ -110,7 +124,6 @@ class QuizApp {
   }
 
   handleKeypress(e) {
-    // Ignore keypresses if typing in input
     if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
 
     switch (e.key.toLowerCase()) {
@@ -124,14 +137,8 @@ class QuizApp {
           }
         }
         break;
-      case 'c': // Correct
-        this.evaluateAnswer(true);
-        break;
-      case 'w': // Wrong
-        this.evaluateAnswer(false);
-        break;
       case 'a': // Toggle Answer Key
-        this.toggleAnswerKey();
+        this.revealAnswerModal();
         break;
       case 'p': // Pause/Resume Timer
         this.toggleTimerPause();
@@ -148,6 +155,11 @@ class QuizApp {
       case 'arrowleft': // Back
         this.navigateBack();
         break;
+      case 'escape': // Close active modals
+        this.closeAnswerModal();
+        this.closeScoreboard();
+        this.closeJudgeDrawer();
+        break;
     }
   }
 
@@ -159,16 +171,12 @@ class QuizApp {
     }
   }
 
-  /**
-   * Preload all assets so everything works 100% offline and lag-free
-   */
   preloadAllAssets() {
     const assetUrls = [
       'quizlanding.png',
       'quizcover.png'
     ];
 
-    // Collect all media from QUIZ_DATA
     this.data.rounds.forEach(r => {
       if (r.questions) {
         r.questions.forEach(q => {
@@ -256,11 +264,11 @@ class QuizApp {
           <div class="landing-rounds-quickbar">
             <span class="quickbar-label">QUICK JUMP TO ROUND:</span>
             <div class="quickbar-buttons">
-              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(0)">ROUND 1 (General)</button>
-              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(1)">ROUND 2 (Box Spin)</button>
-              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(2)">ROUND 3 (General)</button>
-              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(3)">ROUND 4 (Clue)</button>
-              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(4)">ROUND 5 (Finale)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(0)">ROUND 1 (30s)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(1)">ROUND 2 (1m Spin)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(2)">ROUND 3 (40s)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(3)">ROUND 4 (1m Clue)</button>
+              <button class="btn-quick-round" onclick="quizApp.goToRoundGap(4)">ROUND 5 (40s Finale)</button>
             </div>
           </div>
 
@@ -286,6 +294,7 @@ class QuizApp {
   goToRoundGap(roundIdx) {
     this.currentRoundIdx = roundIdx;
     this.currentQuestionIdx = 0;
+    this.currentR2Question = null;
     this.currentView = 'gap';
     this.stopTimer();
 
@@ -305,7 +314,7 @@ class QuizApp {
           <p class="gap-round-desc">${round.description}</p>
 
           <div class="gap-rules-box">
-            <div class="rules-header">🎯 ROUND RULES & SPECIFICATIONS</div>
+            <div class="rules-header">🎯 ROUND RULES & TIME SPECIFICATIONS</div>
             <ul class="rules-list">
               ${round.rules.map(r => `<li>${r}</li>`).join('')}
             </ul>
@@ -342,26 +351,28 @@ class QuizApp {
   }
 
   // ==========================================
-  // GENERAL QUESTION VIEW (R1, R3, R5)
+  // GENERAL QUESTION VIEW (R1 = 30s, R3 = 40s, R5 = 40s)
   // ==========================================
 
   showGeneralQuestion() {
     this.currentView = 'general-q';
+    this.currentR2Question = null;
     this.questionStarted = false;
     this.stopTimer();
 
     const round = this.data.rounds[this.currentRoundIdx];
     const q = round.questions[this.currentQuestionIdx];
+    const dur = round.durationSeconds || 60;
+    this.currentDuration = dur;
 
     this.dom.stage.className = 'stage-cover';
     this.dom.header.classList.remove('hidden');
     this.dom.timerContainer.classList.remove('hidden');
-    this.resetTimerDisplay();
+    this.resetTimerDisplay(dur);
 
     this.dom.roundBadge.innerText = round.title.toUpperCase();
     this.dom.qBadge.innerText = `QUESTION ${this.currentQuestionIdx + 1} OF ${round.totalQuestions}`;
 
-    // Has media
     const hasMedia = q.video || q.image || q.audio;
 
     this.dom.viewContainer.innerHTML = `
@@ -370,7 +381,7 @@ class QuizApp {
         <div id="ready-gate-overlay" class="ready-gate-card">
           <div class="ready-badge">${round.title.toUpperCase()} • QUESTION ${this.currentQuestionIdx + 1}</div>
           <h3 class="ready-prompt-title">Ready for the Question?</h3>
-          <p class="ready-prompt-sub">Timer will begin counting down (60 seconds) immediately when revealed.</p>
+          <p class="ready-prompt-sub">Timer will begin counting down (${dur} seconds) immediately when revealed.</p>
           <button id="btn-start-timer-reveal" class="btn-primary-glow btn-huge">
             <span>⏱ START TIMER & REVEAL QUESTION</span>
           </button>
@@ -380,7 +391,7 @@ class QuizApp {
         <div id="question-content-box" class="question-content-box question-blurred">
           <div class="question-header-row">
             <span class="q-number-pill">Q ${this.currentQuestionIdx + 1}</span>
-            <span class="q-points-pill">60 SECONDS</span>
+            <span class="q-points-pill">${dur} SECONDS</span>
           </div>
 
           <div class="question-text-container">
@@ -423,16 +434,9 @@ class QuizApp {
               ` : ''}
             </div>
           ` : ''}
-
-          <!-- Answer Key Reveal (Judge Reference) -->
-          <div id="answer-key-box" class="answer-key-box hidden">
-            <div class="answer-label">OFFICIAL ANSWER REFERENCE:</div>
-            <div class="answer-value">${q.answer}</div>
-            ${q.hint ? `<div class="answer-hint">ℹ ${q.hint}</div>` : ''}
-          </div>
         </div>
 
-        <!-- Bottom Judge & Navigation Bar -->
+        <!-- Bottom Judge & Navigation Bar (Clean: Correct/Wrong Removed) -->
         <div class="bottom-action-bar">
           <div class="nav-button-group">
             <button class="btn-control" onclick="quizApp.prevGeneralQuestion()">⬅ PREVIOUS</button>
@@ -440,13 +444,7 @@ class QuizApp {
           </div>
 
           <div class="judge-quick-group">
-            <button id="btn-judge-correct" class="btn-eval btn-correct" onclick="quizApp.evaluateAnswer(true)">
-              ✔ CORRECT ANSWER
-            </button>
-            <button id="btn-judge-wrong" class="btn-eval btn-wrong" onclick="quizApp.evaluateAnswer(false)">
-              ✖ WRONG ANSWER
-            </button>
-            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleAnswerKey()">
+            <button class="btn-eval btn-answer-key btn-primary-glow" onclick="quizApp.revealAnswerModal()">
               👁 SHOW ANSWER
             </button>
           </div>
@@ -464,14 +462,16 @@ class QuizApp {
     this.questionStarted = true;
     window.audioMgr.playClick();
 
-    // Reveal question
     const gate = document.getElementById('ready-gate-overlay');
     if (gate) gate.classList.add('gate-hidden');
 
     const contentBox = document.getElementById('question-content-box');
     if (contentBox) contentBox.classList.remove('question-blurred');
 
-    this.startTimer(60);
+    const round = this.data.rounds[this.currentRoundIdx];
+    const dur = round.durationSeconds || 60;
+    this.currentDuration = dur;
+    this.startTimer(dur);
   }
 
   prevGeneralQuestion() {
@@ -491,7 +491,6 @@ class QuizApp {
       this.currentQuestionIdx++;
       this.showGeneralQuestion();
     } else {
-      // Completed all questions in round -> Go to next round gap or finish
       if (this.currentRoundIdx < this.data.rounds.length - 1) {
         this.goToRoundGap(this.currentRoundIdx + 1);
       } else {
@@ -501,11 +500,13 @@ class QuizApp {
   }
 
   // ==========================================
-  // ROUND 2: HIGHLIGHT BOX SPIN ROUND
+  // ROUND 2: HIGHLIGHT BOX SPIN ROUND (1 Minute)
   // ==========================================
 
   showRound2Boxes() {
     this.currentView = 'r2-boxes';
+    this.currentRoundIdx = 1;
+    this.currentR2Question = null;
     this.stopTimer();
 
     this.dom.stage.className = 'stage-cover';
@@ -518,8 +519,9 @@ class QuizApp {
     const round = this.data.rounds[1];
     const remainingCount = round.boxes.length - this.r2UsedBoxes.size;
 
+    // Render inside a clean stage card to prevent overlap with cover graphics!
     this.dom.viewContainer.innerHTML = `
-      <div class="box-selection-screen fade-in">
+      <div class="box-stage-card fade-in">
         <div class="box-selection-header">
           <div class="box-round-title">ROUND 2: THE HIGHLIGHT BOX SELECTION</div>
           <p class="box-selection-subtitle">
@@ -590,23 +592,20 @@ class QuizApp {
     const spinBtn = document.getElementById('btn-spin-r2');
     if (spinBtn) spinBtn.classList.add('disabled');
 
-    // Pick a winner at random
     const winner = available[Math.floor(Math.random() * available.length)];
-    const duration = 4000; // Exactly 4 seconds as requested!
+    const duration = 4000; // 4 seconds
     const startTime = Date.now();
-    let tickSpeed = 70; // Rapid tick in ms
+    let tickSpeed = 70;
     let currentIdx = 0;
 
     const cycle = () => {
       const elapsed = Date.now() - startTime;
 
-      // Remove highlight from all
       available.forEach(b => {
         const el = document.getElementById(`r2-box-${b.boxNum}`);
         if (el) el.classList.remove('box-highlighted');
       });
 
-      // Highlight current
       const activeBox = available[currentIdx % available.length];
       const el = document.getElementById(`r2-box-${activeBox.boxNum}`);
       if (el) el.classList.add('box-highlighted');
@@ -615,13 +614,11 @@ class QuizApp {
       currentIdx++;
 
       if (elapsed < duration) {
-        // Slow down slightly in the last 1.2 seconds
         if (elapsed > duration - 1200) {
           tickSpeed += 14;
         }
         setTimeout(cycle, tickSpeed);
       } else {
-        // Spin finished! Lock into winner
         available.forEach(b => {
           const el = document.getElementById(`r2-box-${b.boxNum}`);
           if (el) el.classList.remove('box-highlighted');
@@ -651,6 +648,7 @@ class QuizApp {
   selectRound2Box(boxNum) {
     this.currentBoxNum = boxNum;
     this.currentView = 'r2-choice';
+    this.currentRoundIdx = 1;
     window.audioMgr.playClick();
 
     const round = this.data.rounds[1];
@@ -663,8 +661,9 @@ class QuizApp {
     this.dom.roundBadge.innerText = 'ROUND 2';
     this.dom.qBadge.innerText = `BOX ${boxNum} SELECTION`;
 
+    // Render inside a clean stage card to prevent background overlap
     this.dom.viewContainer.innerHTML = `
-      <div class="box-choice-screen fade-in">
+      <div class="box-stage-card fade-in">
         <div class="box-choice-header">
           <div class="choice-badge">BOX ${boxNum} UNLOCKED</div>
           <h2 class="choice-title">Choose Your Question</h2>
@@ -696,6 +695,7 @@ class QuizApp {
 
   revealR2Question(choiceNum) {
     window.audioMgr.playClick();
+    this.currentRoundIdx = 1;
     const round = this.data.rounds[1];
     const box = round.boxes.find(b => b.boxNum === this.currentBoxNum);
     const q = box.questions[choiceNum - 1];
@@ -705,10 +705,13 @@ class QuizApp {
     this.questionStarted = false;
     this.stopTimer();
 
+    const dur = 60; // 1 minute
+    this.currentDuration = dur;
+
     this.dom.stage.className = 'stage-cover';
     this.dom.header.classList.remove('hidden');
     this.dom.timerContainer.classList.remove('hidden');
-    this.resetTimerDisplay();
+    this.resetTimerDisplay(dur);
 
     this.dom.roundBadge.innerText = 'ROUND 2';
     this.dom.qBadge.innerText = `BOX ${this.currentBoxNum} • ${q.choice} (${q.qCode})`;
@@ -719,7 +722,7 @@ class QuizApp {
         <div id="ready-gate-overlay" class="ready-gate-card">
           <div class="ready-badge">ROUND 2 • BOX ${this.currentBoxNum} • ${q.choice}</div>
           <h3 class="ready-prompt-title">Ready for ${q.choice}?</h3>
-          <p class="ready-prompt-sub">Timer will begin counting down (60 seconds) immediately upon reveal.</p>
+          <p class="ready-prompt-sub">Timer will begin counting down (1 minute) immediately upon reveal.</p>
           <button id="btn-start-timer-reveal" class="btn-primary-glow btn-huge">
             <span>⏱ START TIMER & REVEAL QUESTION</span>
           </button>
@@ -729,7 +732,7 @@ class QuizApp {
         <div id="question-content-box" class="question-content-box question-blurred">
           <div class="question-header-row">
             <span class="q-number-pill">BOX ${this.currentBoxNum} - ${q.choice}</span>
-            <span class="q-points-pill">60 SECONDS</span>
+            <span class="q-points-pill">1 MINUTE (60 SEC)</span>
           </div>
 
           <div class="question-text-container">
@@ -744,16 +747,9 @@ class QuizApp {
               </div>
             </div>
           ` : ''}
-
-          <!-- Answer Key Reveal (Judge Reference) -->
-          <div id="answer-key-box" class="answer-key-box hidden">
-            <div class="answer-label">OFFICIAL ANSWER REFERENCE:</div>
-            <div class="answer-value">${q.answer}</div>
-            ${q.hint ? `<div class="answer-hint">ℹ ${q.hint}</div>` : ''}
-          </div>
         </div>
 
-        <!-- Bottom Judge & Return Bar -->
+        <!-- Bottom Judge & Return Bar (Correct/Wrong Removed) -->
         <div class="bottom-action-bar">
           <div class="nav-button-group">
             <button class="btn-control btn-return-boxes" onclick="quizApp.returnFromR2Question()">
@@ -762,13 +758,7 @@ class QuizApp {
           </div>
 
           <div class="judge-quick-group">
-            <button class="btn-eval btn-correct" onclick="quizApp.evaluateAnswer(true)">
-              ✔ CORRECT ANSWER
-            </button>
-            <button class="btn-eval btn-wrong" onclick="quizApp.evaluateAnswer(false)">
-              ✖ WRONG ANSWER
-            </button>
-            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleAnswerKey()">
+            <button class="btn-eval btn-answer-key btn-primary-glow" onclick="quizApp.revealAnswerModal()">
               👁 SHOW ANSWER
             </button>
           </div>
@@ -783,7 +773,6 @@ class QuizApp {
 
   returnFromR2Question() {
     window.audioMgr.playClick();
-    // Mark box as used and hide it!
     if (this.currentBoxNum) {
       this.r2UsedBoxes.add(this.currentBoxNum);
     }
@@ -798,11 +787,12 @@ class QuizApp {
   }
 
   // ==========================================
-  // ROUND 4: CLUE ROUND (6 BOXES, 3 CLUES EACH)
+  // ROUND 4: CLUE ROUND (1 Minute with Spin)
   // ==========================================
 
   showRound4Boxes() {
     this.currentView = 'r4-boxes';
+    this.currentRoundIdx = 3;
     this.stopTimer();
 
     this.dom.stage.className = 'stage-cover';
@@ -815,8 +805,9 @@ class QuizApp {
     const round = this.data.rounds[3];
     const remainingCount = round.boxes.length - this.r4UsedBoxes.size;
 
+    // Render inside a clean stage card to prevent background overlap
     this.dom.viewContainer.innerHTML = `
-      <div class="box-selection-screen fade-in">
+      <div class="box-stage-card fade-in">
         <div class="box-selection-header">
           <div class="box-round-title">ROUND 4: THE CLUE ROUND</div>
           <p class="box-selection-subtitle">
@@ -887,23 +878,20 @@ class QuizApp {
     const spinBtn = document.getElementById('btn-spin-r4');
     if (spinBtn) spinBtn.classList.add('disabled');
 
-    // Pick a winner at random
     const winner = available[Math.floor(Math.random() * available.length)];
-    const duration = 4000; // Exactly 4 seconds as requested
+    const duration = 4000; // 4 seconds
     const startTime = Date.now();
-    let tickSpeed = 70; // Rapid tick in ms
+    let tickSpeed = 70;
     let currentIdx = 0;
 
     const cycle = () => {
       const elapsed = Date.now() - startTime;
 
-      // Remove highlight from all
       available.forEach(b => {
         const el = document.getElementById(`r4-box-${b.boxNum}`);
         if (el) el.classList.remove('box-highlighted');
       });
 
-      // Highlight current
       const activeBox = available[currentIdx % available.length];
       const el = document.getElementById(`r4-box-${activeBox.boxNum}`);
       if (el) el.classList.add('box-highlighted');
@@ -912,13 +900,11 @@ class QuizApp {
       currentIdx++;
 
       if (elapsed < duration) {
-        // Slow down slightly in the last 1.2 seconds
         if (elapsed > duration - 1200) {
           tickSpeed += 14;
         }
         setTimeout(cycle, tickSpeed);
       } else {
-        // Spin finished! Lock into winner
         available.forEach(b => {
           const el = document.getElementById(`r4-box-${b.boxNum}`);
           if (el) el.classList.remove('box-highlighted');
@@ -948,6 +934,7 @@ class QuizApp {
   selectRound4Box(boxNum) {
     if (this.r4UsedBoxes.has(boxNum)) return;
     this.currentBoxNum = boxNum;
+    this.currentRoundIdx = 3;
     this.currentR4ClueStep = 1;
     this.currentView = 'r4-clue';
     this.questionStarted = false;
@@ -957,10 +944,13 @@ class QuizApp {
     const round = this.data.rounds[3];
     const box = round.boxes.find(b => b.boxNum === boxNum);
 
+    const dur = 60; // 1 minute
+    this.currentDuration = dur;
+
     this.dom.stage.className = 'stage-cover';
     this.dom.header.classList.remove('hidden');
     this.dom.timerContainer.classList.remove('hidden');
-    this.resetTimerDisplay();
+    this.resetTimerDisplay(dur);
 
     this.dom.roundBadge.innerText = 'ROUND 4';
     this.dom.qBadge.innerText = `CLUE BOX ${boxNum} • ${box.qCode}`;
@@ -979,7 +969,7 @@ class QuizApp {
         <div id="ready-gate-overlay" class="ready-gate-card">
           <div class="ready-badge">ROUND 4 • CLUE BOX ${this.currentBoxNum}</div>
           <h3 class="ready-prompt-title">Ready for Clue 1?</h3>
-          <p class="ready-prompt-sub">Timer will begin 60-second countdown for the whole question.</p>
+          <p class="ready-prompt-sub">Timer will begin 1-minute (60 seconds) countdown for the whole question.</p>
           <button id="btn-start-timer-reveal" class="btn-primary-glow btn-huge">
             <span>⏱ START TIMER & REVEAL CLUE 1</span>
           </button>
@@ -989,7 +979,7 @@ class QuizApp {
         <div id="question-content-box" class="question-content-box question-blurred">
           <div class="question-header-row">
             <span class="q-number-pill">CLUE BOX ${this.currentBoxNum} (${box.qCode})</span>
-            <span class="q-points-pill">60 SECONDS TOTAL</span>
+            <span class="q-points-pill">1 MINUTE TOTAL</span>
           </div>
 
           <!-- Progressive Clues List -->
@@ -1048,16 +1038,9 @@ class QuizApp {
               `}
             </div>
           </div>
-
-          <!-- Answer Key Reveal -->
-          <div id="answer-key-box" class="answer-key-box hidden">
-            <div class="answer-label">OFFICIAL ANSWER REFERENCE:</div>
-            <div class="answer-value">${box.answer}</div>
-            ${box.hint ? `<div class="answer-hint">ℹ ${box.hint}</div>` : ''}
-          </div>
         </div>
 
-        <!-- Bottom Judge & Next Clue Bar -->
+        <!-- Bottom Judge & Next Clue Bar (Correct/Wrong Removed) -->
         <div class="bottom-action-bar">
           <div class="nav-button-group">
             <button class="btn-control btn-return-boxes" onclick="quizApp.returnFromR4Question()">
@@ -1074,13 +1057,7 @@ class QuizApp {
           </div>
 
           <div class="judge-quick-group">
-            <button class="btn-eval btn-correct" onclick="quizApp.evaluateAnswer(true)">
-              ✔ CORRECT ANSWER
-            </button>
-            <button class="btn-eval btn-wrong" onclick="quizApp.evaluateAnswer(false)">
-              ✖ WRONG ANSWER
-            </button>
-            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleAnswerKey()">
+            <button class="btn-eval btn-answer-key btn-primary-glow" onclick="quizApp.revealAnswerModal()">
               👁 SHOW ANSWER
             </button>
           </div>
@@ -1101,7 +1078,6 @@ class QuizApp {
     const box = round.boxes.find(b => b.boxNum === this.currentBoxNum);
     this.renderClueQuestion(box);
 
-    // Keep gate hidden and question visible since timer is already running
     const gate = document.getElementById('ready-gate-overlay');
     if (gate) gate.classList.add('gate-hidden');
     const contentBox = document.getElementById('question-content-box');
@@ -1120,6 +1096,119 @@ class QuizApp {
     if (confirm("Reset all clue boxes for Round 4?")) {
       this.r4UsedBoxes.clear();
       this.showRound4Boxes();
+    }
+  }
+
+  // ==========================================
+  // DYNAMIC ANSWER REVEAL MODAL (Round 2 Countdown vs Direct)
+  // ==========================================
+
+  revealAnswerModal() {
+    window.audioMgr.playClick();
+    let qObj = null;
+    let roundTitle = "";
+    const round = this.data.rounds[this.currentRoundIdx];
+
+    if (this.currentRoundIdx === 1) { // Round 2
+      qObj = this.currentR2Question;
+      roundTitle = `ROUND 2 • BOX ${this.currentBoxNum} • ${qObj ? qObj.choice : ''}`;
+    } else if (this.currentRoundIdx === 3) { // Round 4
+      const box = round.boxes.find(b => b.boxNum === this.currentBoxNum);
+      qObj = box;
+      roundTitle = `ROUND 4 • CLUE BOX ${this.currentBoxNum} (${box ? box.qCode : ''})`;
+    } else { // Round 1, 3, 5
+      qObj = round.questions[this.currentQuestionIdx];
+      roundTitle = `${round.title.toUpperCase()} • QUESTION ${this.currentQuestionIdx + 1}`;
+    }
+
+    if (!qObj) return;
+
+    const answerText = qObj.answer;
+    const hintText = qObj.hint || "";
+    const qText = qObj.text || (qObj.clues ? qObj.clues[0].text : "");
+
+    // Pause question timer while answer is revealed
+    if (this.timerRunning) {
+      this.stopTimer();
+    }
+
+    if (this.currentRoundIdx === 1) {
+      // ROUND 2: 5, 4, 3, 2, 1 Countdown with Suspense Audio!
+      this.showRound2AnswerCountdown(roundTitle, qText, answerText, hintText);
+    } else {
+      // ALL OTHER ROUNDS: Direct Center Reveal Modal
+      this.showDirectAnswerModal(roundTitle, qText, answerText, hintText);
+    }
+  }
+
+  showRound2AnswerCountdown(roundTitle, qText, answerText, hintText) {
+    if (this.answerCountdownTimer) {
+      clearInterval(this.answerCountdownTimer);
+      this.answerCountdownTimer = null;
+    }
+
+    // Prepare Modal
+    this.dom.answerModal.classList.remove('hidden');
+    this.dom.answerCountdownView.classList.remove('hidden');
+    this.dom.answerRevealCard.classList.add('hidden');
+
+    let count = 5;
+    this.dom.countdownNumber.innerText = count;
+    window.audioMgr.playSuspenseTick(count);
+
+    this.answerCountdownTimer = setInterval(() => {
+      count--;
+      if (count > 0) {
+        this.dom.countdownNumber.innerText = count;
+        // Trigger pulse re-render
+        this.dom.countdownNumber.style.animation = 'none';
+        void this.dom.countdownNumber.offsetWidth;
+        this.dom.countdownNumber.style.animation = 'countdownPulse 0.95s ease-out infinite';
+        window.audioMgr.playSuspenseTick(count);
+      } else {
+        clearInterval(this.answerCountdownTimer);
+        this.answerCountdownTimer = null;
+
+        // Reveal the Answer Card!
+        this.dom.answerCountdownView.classList.add('hidden');
+        this.dom.answerRevealCard.classList.remove('hidden');
+
+        this.dom.answerModalBadge.innerText = roundTitle;
+        this.dom.answerModalQText.innerText = qText;
+        this.dom.answerModalValue.innerText = answerText;
+        this.dom.answerModalHint.innerText = hintText ? `ℹ ${hintText}` : '';
+
+        window.audioMgr.playAnswerReveal();
+        window.confetti.fire(3000);
+      }
+    }, 1000);
+  }
+
+  showDirectAnswerModal(roundTitle, qText, answerText, hintText) {
+    if (this.answerCountdownTimer) {
+      clearInterval(this.answerCountdownTimer);
+      this.answerCountdownTimer = null;
+    }
+
+    this.dom.answerModal.classList.remove('hidden');
+    this.dom.answerCountdownView.classList.add('hidden');
+    this.dom.answerRevealCard.classList.remove('hidden');
+
+    this.dom.answerModalBadge.innerText = roundTitle;
+    this.dom.answerModalQText.innerText = qText;
+    this.dom.answerModalValue.innerText = answerText;
+    this.dom.answerModalHint.innerText = hintText ? `ℹ ${hintText}` : '';
+
+    window.audioMgr.playAnswerReveal();
+  }
+
+  closeAnswerModal() {
+    if (this.answerCountdownTimer) {
+      clearInterval(this.answerCountdownTimer);
+      this.answerCountdownTimer = null;
+    }
+    if (this.dom.answerModal) {
+      this.dom.answerModal.classList.add('hidden');
     }
   }
 
@@ -1173,12 +1262,15 @@ class QuizApp {
   }
 
   // ==========================================
-  // TIMER ENGINE & NFS WARNING COUNTDOWN
+  // TIMER ENGINE & WARNING COUNTDOWN
   // ==========================================
 
-  startTimer(seconds = 60) {
+  startTimer(seconds) {
     this.stopTimer();
-    this.timerSeconds = seconds;
+    const round = this.data.rounds[this.currentRoundIdx];
+    const dur = seconds || (round ? round.durationSeconds : 60) || 60;
+    this.currentDuration = dur;
+    this.timerSeconds = dur;
     this.timerRunning = true;
     this.updateTimerDisplay();
 
@@ -1230,8 +1322,11 @@ class QuizApp {
     }
   }
 
-  resetTimerDisplay() {
-    this.timerSeconds = 60;
+  resetTimerDisplay(duration) {
+    const round = this.data.rounds[this.currentRoundIdx];
+    const dur = duration || (round ? round.durationSeconds : 60) || 60;
+    this.currentDuration = dur;
+    this.timerSeconds = dur;
     this.updateTimerDisplay();
   }
 
@@ -1242,10 +1337,10 @@ class QuizApp {
       this.dom.timerSeconds.innerText = formatted;
     }
 
-    // SVG Circle offset (total circumference = 2 * PI * 44 ≈ 276.46)
     if (this.dom.timerSvgCircle) {
       const circ = 276.46;
-      const progress = s / 60;
+      const total = this.currentDuration || 60;
+      const progress = s / total;
       const offset = circ * (1 - progress);
       this.dom.timerSvgCircle.style.strokeDashoffset = offset;
 
@@ -1272,39 +1367,6 @@ class QuizApp {
     window.audioMgr.playTimeFinished();
     if (this.dom.timeOverModal) {
       this.dom.timeOverModal.classList.remove('hidden');
-    }
-  }
-
-  // ==========================================
-  // JUDGE EVALUATION & FEEDBACK
-  // ==========================================
-
-  evaluateAnswer(isCorrect) {
-    if (isCorrect) {
-      window.audioMgr.playCorrect();
-      window.confetti.fire(3500);
-      this.showEvalBanner("Your answer is correct, Keep Going!", 'eval-correct');
-    } else {
-      window.audioMgr.playWrong();
-      this.showEvalBanner("Sorry, you have answered the wrong one", 'eval-wrong');
-    }
-  }
-
-  showEvalBanner(message, cssClass) {
-    if (!this.dom.evalBanner) return;
-    this.dom.evalText.innerText = message;
-    this.dom.evalBanner.className = `eval-banner ${cssClass} eval-visible`;
-
-    setTimeout(() => {
-      this.dom.evalBanner?.classList.remove('eval-visible');
-    }, 4500);
-  }
-
-  toggleAnswerKey() {
-    const box = document.getElementById('answer-key-box');
-    if (box) {
-      box.classList.toggle('hidden');
-      window.audioMgr.playClick();
     }
   }
 
@@ -1357,7 +1419,7 @@ class QuizApp {
   }
 
   // ==========================================
-  // JUDGE DRAWER & SCOREBOARD
+  // JUDGE DRAWER & LIVE SCOREBOARD
   // ==========================================
 
   toggleJudgeDrawer() {
@@ -1389,6 +1451,7 @@ class QuizApp {
     const listEl = document.getElementById('scoreboard-teams-list');
     if (!listEl) return;
 
+    // Requested buttons: -1, -2, -5, -10 and +1, +2, +3, +4, +5
     listEl.innerHTML = this.teams.map((t, idx) => `
       <div class="scoreboard-row">
         <div class="team-info">
@@ -1396,11 +1459,16 @@ class QuizApp {
           <input type="text" class="team-name-input" value="${t.name}" onchange="quizApp.updateTeamName(${idx}, this.value)">
         </div>
         <div class="team-score-controls">
-          <button class="score-adjust-btn" onclick="quizApp.adjustScore(${idx}, -5)">-5</button>
-          <button class="score-adjust-btn" onclick="quizApp.adjustScore(${idx}, -10)">-10</button>
+          <button class="score-adjust-btn btn-minus" title="Deduct 10" onclick="quizApp.adjustScore(${idx}, -10)">-10</button>
+          <button class="score-adjust-btn btn-minus" title="Deduct 5" onclick="quizApp.adjustScore(${idx}, -5)">-5</button>
+          <button class="score-adjust-btn btn-minus" title="Deduct 2" onclick="quizApp.adjustScore(${idx}, -2)">-2</button>
+          <button class="score-adjust-btn btn-minus" title="Deduct 1" onclick="quizApp.adjustScore(${idx}, -1)">-1</button>
           <span class="team-score-num">${t.score}</span>
-          <button class="score-adjust-btn btn-plus" onclick="quizApp.adjustScore(${idx}, 5)">+5</button>
-          <button class="score-adjust-btn btn-plus" onclick="quizApp.adjustScore(${idx}, 10)">+10</button>
+          <button class="score-adjust-btn btn-plus" title="Add 1" onclick="quizApp.adjustScore(${idx}, 1)">+1</button>
+          <button class="score-adjust-btn btn-plus" title="Add 2" onclick="quizApp.adjustScore(${idx}, 2)">+2</button>
+          <button class="score-adjust-btn btn-plus" title="Add 3" onclick="quizApp.adjustScore(${idx}, 3)">+3</button>
+          <button class="score-adjust-btn btn-plus" title="Add 4" onclick="quizApp.adjustScore(${idx}, 4)">+4</button>
+          <button class="score-adjust-btn btn-plus" title="Add 5" onclick="quizApp.adjustScore(${idx}, 5)">+5</button>
         </div>
       </div>
     `).join('');
@@ -1433,7 +1501,7 @@ class QuizApp {
   }
 }
 
-// Instantiate and attach to window
+// Global instance
 window.quizApp = new QuizApp();
 window.addEventListener('DOMContentLoaded', () => {
   window.quizApp.init();

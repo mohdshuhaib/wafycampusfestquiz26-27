@@ -731,8 +731,25 @@ html, body {
 }
 
 /* ==========================================================================
-   ROUND 2 & 4 BOX SELECTION SCREENS
+   ROUND 2 & 4 BOX SELECTION SCREENS & STAGE CARDS
    ========================================================================== */
+
+.box-stage-card {
+  max-width: 1140px;
+  width: 96%;
+  height: 100%;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 2px solid var(--color-gold);
+  border-radius: var(--radius-lg);
+  padding: 26px 36px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
 
 .box-selection-screen {
   width: 100%;
@@ -1381,6 +1398,165 @@ html, body {
 }
 
 /* ==========================================================================
+   DYNAMIC ANSWER REVEAL MODAL (Round 2 Suspense Countdown & Direct Reveal)
+   ========================================================================== */
+
+.answer-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ROUND 2 SUSPENSE COUNTDOWN VIEW */
+.answer-countdown-view {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdown-badge {
+  display: inline-block;
+  padding: 8px 24px;
+  background: var(--color-primary-red);
+  color: #fff;
+  border-radius: 30px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  margin-bottom: 24px;
+  box-shadow: 0 0 25px rgba(186, 28, 23, 0.6);
+}
+
+.countdown-big-number {
+  font-size: 13rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--color-gold);
+  text-shadow: 0 0 50px rgba(251, 176, 36, 0.8), 0 0 100px rgba(251, 176, 36, 0.4);
+  margin-bottom: 20px;
+  animation: countdownPulse 0.95s ease-out infinite;
+}
+
+@keyframes countdownPulse {
+  0% { transform: scale(1.3); opacity: 0; }
+  25% { transform: scale(1); opacity: 1; }
+  85% { transform: scale(0.95); opacity: 0.9; }
+  100% { transform: scale(0.85); opacity: 0; }
+}
+
+.countdown-sub {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+}
+
+/* CENTER ANSWER CARD VIEW */
+.answer-reveal-card {
+  position: relative;
+  z-index: 10;
+  background: #ffffff;
+  border: 3px solid var(--color-gold);
+  border-radius: var(--radius-lg);
+  padding: 38px 46px;
+  max-width: 860px;
+  width: 90%;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
+  animation: bounceIn 0.35s ease-out;
+}
+
+.answer-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.answer-card-badge {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--color-primary-red);
+  background: rgba(186, 28, 23, 0.08);
+  padding: 6px 16px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+}
+
+.answer-card-close {
+  background: #f1f5f9;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.answer-card-close:hover {
+  background: #e2e8f0;
+}
+
+.answer-card-qtext {
+  font-size: 1.15rem;
+  color: #475569;
+  margin-bottom: 22px;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.answer-card-content {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid #86efac;
+  border-radius: var(--radius-md);
+  padding: 26px 30px;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.answer-card-label {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #166534;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.answer-card-value {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #14532d;
+  line-height: 1.25;
+  white-space: pre-line;
+}
+
+.answer-card-hint {
+  font-size: 1rem;
+  color: #15803d;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.answer-card-footer {
+  display: flex;
+  justify-content: center;
+}
+
+/* ==========================================================================
    SCOREBOARD MODAL
    ========================================================================== */
 
@@ -1403,8 +1579,8 @@ html, body {
   border: 2px solid var(--color-gold);
   border-radius: var(--radius-lg);
   padding: 36px 44px;
-  width: 760px;
-  max-width: 90%;
+  width: 920px;
+  max-width: 95%;
   box-shadow: var(--shadow-stage);
 }
 
@@ -1470,6 +1646,7 @@ html, body {
   background: transparent;
   padding: 4px 8px;
   border-radius: 6px;
+  width: 120px;
 }
 
 .team-name-input:focus {
@@ -1481,38 +1658,48 @@ html, body {
 .team-score-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .team-score-num {
   font-size: 1.5rem;
   font-weight: 900;
   color: #0f172a;
-  min-width: 50px;
+  min-width: 48px;
   text-align: center;
 }
 
 .score-adjust-btn {
   background: #e2e8f0;
   border: none;
-  padding: 6px 12px;
+  padding: 5px 9px;
   border-radius: 6px;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
+  transition: all 0.15s;
 }
 
 .score-adjust-btn:hover {
-  background: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.score-adjust-btn.btn-minus {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.score-adjust-btn.btn-minus:hover {
+  background: #fca5a5;
 }
 
 .score-adjust-btn.btn-plus {
   background: #dcfce7;
-  color: #166534;
+  color: #15803d;
 }
 
 .score-adjust-btn.btn-plus:hover {
-  background: #bbf7d0;
+  background: #86efac;
 }
 
 /* ==========================================================================

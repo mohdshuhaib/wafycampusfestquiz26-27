@@ -57,21 +57,47 @@
       <!-- ACTIVE STAGE CANVAS -->
       <main id="stage-content"></main>
 
-      <!-- FLOATING EVALUATION BANNER -->
-      <div id="eval-banner" class="eval-banner">
-        <span id="eval-text">Your answer is correct, Keep Going!</span>
-      </div>
-
       <!-- TIME OVER MODAL -->
       <div id="time-over-modal" class="time-over-modal hidden">
         <div class="modal-backdrop"></div>
         <div class="time-over-card">
           <div class="time-over-icon">⏰</div>
           <h2 class="time-over-title">TIME FINISHED!</h2>
-          <p class="time-over-desc">The 60-second time limit for this question has expired.</p>
+          <p class="time-over-desc">The time limit for this question has expired.</p>
           <button id="btn-dismiss-timeover" class="btn-primary-glow btn-large">
-            <span>🔍 REVIEW QUESTION & EVALUATE</span>
+            <span>🔍 REVIEW QUESTION</span>
           </button>
+        </div>
+      </div>
+
+      <!-- DYNAMIC ANSWER REVEAL MODAL -->
+      <div id="answer-modal" class="answer-modal hidden">
+        <div class="modal-backdrop" onclick="quizApp.closeAnswerModal()"></div>
+        
+        <!-- Suspense 5, 4, 3, 2, 1 Countdown View (Round 2) -->
+        <div id="answer-countdown-view" class="answer-countdown-view hidden">
+          <div class="countdown-badge">ROUND 2 • REVEALING ANSWER</div>
+          <div id="countdown-number" class="countdown-big-number">5</div>
+          <div class="countdown-sub">GET READY...</div>
+        </div>
+
+        <!-- Center Answer Card View -->
+        <div id="answer-reveal-card" class="answer-reveal-card hidden">
+          <div class="answer-card-header">
+            <div class="answer-card-badge" id="answer-modal-badge">ROUND 1 • QUESTION 01</div>
+            <button class="answer-card-close" onclick="quizApp.closeAnswerModal()">✕</button>
+          </div>
+          <div class="answer-card-qtext" id="answer-modal-qtext">Question preview text</div>
+          <div class="answer-card-content">
+            <div class="answer-card-label">OFFICIAL ANSWER</div>
+            <div class="answer-card-value" id="answer-modal-value">Answer Value</div>
+            <div class="answer-card-hint" id="answer-modal-hint"></div>
+          </div>
+          <div class="answer-card-footer">
+            <button class="btn-primary-glow" onclick="quizApp.closeAnswerModal()">
+              <span>✓ CLOSE ANSWER</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -117,14 +143,13 @@
             <div class="drawer-section-title">KEYBOARD SHORTCUTS</div>
             <div class="hotkeys-list">
               <div><span>Start Timer / Next Clue</span> <kbd>Space</kbd></div>
-              <div><span>Mark Correct Answer</span> <kbd>C</kbd></div>
-              <div><span>Mark Wrong Answer</span> <kbd>W</kbd></div>
-              <div><span>Toggle Official Answer</span> <kbd>A</kbd></div>
+              <div><span>Reveal Official Answer</span> <kbd>A</kbd></div>
               <div><span>Pause / Resume Timer</span> <kbd>P</kbd></div>
               <div><span>Next Question</span> <kbd>→</kbd></div>
               <div><span>Previous Question</span> <kbd>←</kbd></div>
               <div><span>Toggle Fullscreen</span> <kbd>F</kbd></div>
-              <div><span>Judge Controls</span> <kbd>J</kbd></div>
+              <div><span>Judge Master Controls</span> <kbd>J</kbd></div>
+              <div><span>Close Active Modal</span> <kbd>Esc</kbd></div>
             </div>
           </div>
         </div>

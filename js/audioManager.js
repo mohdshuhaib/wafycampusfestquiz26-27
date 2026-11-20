@@ -235,6 +235,69 @@ class AudioManager {
   }
 
   /**
+   * Dramatic Suspense Countdown Tick (5, 4, 3, 2, 1) for Round 2 Answer Reveal
+   */
+  playSuspenseTick(num) {
+    if (this.muted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const urgency = 6 - num; // 1 (at 5) to 5 (at 1)
+
+    // 1. Cinematic Sub Hit / Heartbeat
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(90 + (urgency * 15), t);
+    sub.frequency.exponentialRampToValueAtTime(30, t + 0.35);
+    subGain.gain.setValueAtTime(0.65, t);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+    sub.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    sub.start(t);
+    sub.stop(t + 0.4);
+
+    // 2. High Expectant Ping / Resonant Metallic Click
+    const ping = this.ctx.createOscillator();
+    const pingGain = this.ctx.createGain();
+    ping.type = 'triangle';
+    const pingFreq = 440 + (urgency * 120); // 560Hz up to 1040Hz
+    ping.frequency.setValueAtTime(pingFreq, t);
+    ping.frequency.exponentialRampToValueAtTime(pingFreq * 1.5, t + 0.15);
+    pingGain.gain.setValueAtTime(0.4, t);
+    pingGain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    ping.connect(pingGain);
+    pingGain.connect(this.ctx.destination);
+    ping.start(t);
+    ping.stop(t + 0.24);
+  }
+
+  /**
+   * Grand Answer Reveal Impact Chime
+   */
+  playAnswerReveal() {
+    if (this.muted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const chords = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C Major shimmering chord
+    chords.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + i * 0.05);
+      gain.gain.setValueAtTime(0.3, t + i * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t + i * 0.05);
+      osc.stop(t + 1.25);
+    });
+  }
+
+  /**
    * Correct Answer Fanfare & Voice:
    * "Your answer is correct, Keep Going"
    */
