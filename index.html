@@ -70,17 +70,78 @@
         </div>
       </div>
 
-      <!-- DYNAMIC ANSWER REVEAL MODAL -->
+      <!-- CONFIRM SHOW RESULTS MODAL -->
+      <div id="confirm-results-modal" class="confirm-results-modal hidden">
+        <div class="modal-backdrop" onclick="quizApp.closeConfirmResultsModal()"></div>
+        <div class="confirm-card">
+          <div class="confirm-icon">🏆</div>
+          <h2 class="confirm-title">CONCLUDE & REVEAL RESULTS?</h2>
+          <p class="confirm-desc">Are you sure you want to show the final competition results and leaderboard podium?</p>
+          <div class="confirm-actions">
+            <button class="btn-secondary" onclick="quizApp.closeConfirmResultsModal()">
+              ✕ NO, GO BACK
+            </button>
+            <button class="btn-primary-glow btn-large" onclick="quizApp.startResultsCountdown()">
+              <span>✓ YES, SHOW RESULTS</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTS COUNTDOWN OVERLAY (3, 2, 1) -->
+      <div id="results-countdown-overlay" class="results-countdown-overlay hidden">
+        <div class="modal-backdrop"></div>
+        <div class="results-countdown-box">
+          <div class="results-countdown-badge">FINAL RESULTS REVEAL</div>
+          <div id="results-countdown-number" class="countdown-big-number">3</div>
+          <div class="results-countdown-sub">CALCULATING WINNERS...</div>
+        </div>
+      </div>
+
+      <!-- ROUND 2 EVALUATION MODAL (WRONG OR CORRECT WITH 5s COUNTDOWN) -->
+      <div id="r2-eval-modal" class="r2-eval-modal hidden">
+        <div class="modal-backdrop"></div>
+        
+        <!-- 5, 4, 3, 2, 1 Countdown View -->
+        <div id="r2-eval-countdown-view" class="answer-countdown-view hidden">
+          <div class="countdown-badge" id="r2-eval-badge">ROUND 2 • JUDGING ANSWER</div>
+          <div id="r2-countdown-number" class="countdown-big-number">5</div>
+          <div class="countdown-sub">VERIFYING WITH THE JUDGE...</div>
+        </div>
+
+        <!-- Wrong Answer Card -->
+        <div id="r2-wrong-card" class="r2-result-card r2-card-wrong hidden">
+          <div class="r2-card-icon">✖</div>
+          <h2 class="r2-card-title">SORRY, WRONG ANSWER!</h2>
+          <p class="r2-card-sub">The question remains active and passes to the next team.</p>
+          <div class="r2-card-actions">
+            <button class="btn-primary-glow btn-large" onclick="quizApp.closeR2WrongModal()">
+              <span>⬅ BACK TO QUESTION (PASS TO NEXT TEAM)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Correct Answer Card -->
+        <div id="r2-correct-card" class="r2-result-card r2-card-correct hidden">
+          <div class="r2-card-icon">✔</div>
+          <h2 class="r2-card-title">YOUR ANSWER IS CORRECT!</h2>
+          <p class="r2-card-sub">Keep going! Here is the official answer:</p>
+          <div class="r2-correct-answer-box">
+            <div class="r2-answer-val" id="r2-correct-answer-val"></div>
+            <div class="r2-answer-hint" id="r2-correct-answer-hint"></div>
+          </div>
+          <div class="r2-card-actions">
+            <button class="btn-primary-glow btn-large" onclick="quizApp.completeR2FromModal()">
+              <span>📦 COMPLETE & RETURN TO BOX SELECTION</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DYNAMIC ANSWER REVEAL MODAL (General Rounds) -->
       <div id="answer-modal" class="answer-modal hidden">
         <div class="modal-backdrop" onclick="quizApp.closeAnswerModal()"></div>
         
-        <!-- Suspense 5, 4, 3, 2, 1 Countdown View (Round 2) -->
-        <div id="answer-countdown-view" class="answer-countdown-view hidden">
-          <div class="countdown-badge">ROUND 2 • REVEALING ANSWER</div>
-          <div id="countdown-number" class="countdown-big-number">5</div>
-          <div class="countdown-sub">GET READY...</div>
-        </div>
-
         <!-- Center Answer Card View -->
         <div id="answer-reveal-card" class="answer-reveal-card hidden">
           <div class="answer-card-header">

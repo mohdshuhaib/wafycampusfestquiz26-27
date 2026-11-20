@@ -301,7 +301,7 @@ class AudioManager {
    * Correct Answer Fanfare & Voice:
    * "Your answer is correct, Keep Going"
    */
-  playCorrect() {
+  playCorrect(customText = "Your answer is correct, Keep Going") {
     if (this.muted) return;
     this.ensureContext();
     if (this.ctx) {
@@ -340,17 +340,16 @@ class AudioManager {
       });
     }
 
-    // Voice announcement as requested: "Your answer is correct, Keep Going"
     setTimeout(() => {
-      this.speak("Your answer is correct, Keep Going");
+      this.speak(customText);
     }, 450);
   }
 
   /**
    * Wrong Answer Buzzer & Voice:
-   * "Sorry, you have answered the wrong one"
+   * "Sorry, Wrong Answer"
    */
-  playWrong() {
+  playWrong(customText = "Sorry, Wrong Answer") {
     if (this.muted) return;
     this.ensureContext();
     if (this.ctx) {
@@ -383,9 +382,8 @@ class AudioManager {
       osc2.stop(t + 0.75);
     }
 
-    // Voice announcement as requested: "Sorry, you have answered the wrong one"
     setTimeout(() => {
-      this.speak("Sorry, you have answered the wrong one");
+      this.speak(customText);
     }, 350);
   }
 

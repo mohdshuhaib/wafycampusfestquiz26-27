@@ -137,14 +137,14 @@ const QUIZ_DATA = {
       type: "box-choice",
       totalBoxes: 6,
       durationSeconds: 60, // 1 minute
-      description: "6 Sets of Mystery Boxes. Click SPIN to highlight boxes fast for 4 seconds and randomly choose. Each box offers Q-1 and Q-2.",
+      description: "6 Sets of Mystery Boxes. Click SPIN to highlight boxes fast for 4 seconds and randomly choose. Each box offers options H and A.",
       rules: [
         "6 Mystery boxes displayed on screen.",
         "Judge clicks 'SPIN' to highlight boxes rapidly for 4 seconds, stopping randomly on one box.",
-        "Each box reveals two question choices: Q-1 and Q-2.",
-        "The team selects one question; the judge clicks to reveal it.",
+        "Each box reveals two question choices: H and A.",
+        "The team selects either H or A; the judge clicks to reveal it.",
         "1 Minute (60 Seconds) countdown with live warning sounds.",
-        "Showing answer features a dramatic 5-second countdown with suspense sounds!",
+        "Judge evaluates answer with WRONG or CORRECT buttons featuring suspense countdowns.",
         "Returning to box selection hides the completed box for remaining teams."
       ],
       boxes: [
@@ -155,7 +155,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b1-q1",
               qCode: "B-1-1",
-              choice: "Q-1",
+              choice: "H",
               text: "Identify the animal featured in the logo of Qatar Airways?",
               image: "quizassets/round2-b1-q1img.jpeg",
               answer: "Arabian Oryx",
@@ -164,7 +164,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b1-q2",
               qCode: "B-1-2",
-              choice: "Q-2",
+              choice: "A",
               text: "The name Starbucks was inspired by a character from which classic novel?",
               image: "quizassets/round2-b1-q2img.jpeg",
               answer: "Moby-Dick",
@@ -179,7 +179,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b2-q1",
               qCode: "B-2-1",
-              choice: "Q-1",
+              choice: "H",
               text: "After facing a nationwide ban in India, which famous brand made a massive comeback using this emotional tagline 'We Miss You Too'?",
               image: "quizassets/round2-b2-q1img.png",
               answer: "Maggi",
@@ -188,7 +188,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b2-q2",
               qCode: "B-2-2",
-              choice: "Q-2",
+              choice: "A",
               text: "Identify the iconic Indian-made cola beverage that uses the famous tagline 'India Ka Thanda' or 'The Great Indian Taste'?",
               image: "quizassets/round2-b2-q2img.png",
               answer: "Campa Cola",
@@ -203,7 +203,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b3-q1",
               qCode: "B-3-1",
-              choice: "Q-1",
+              choice: "H",
               text: "Which global brand adopted its world-famous tagline, inspired by the final words of a convict just before his execution?",
               image: "quizassets/round2-b3-q1img.jpg",
               answer: "Nike",
@@ -212,7 +212,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b3-q2",
               qCode: "B-3-2",
-              choice: "Q-2",
+              choice: "A",
               text: "Identify the new bill recently introduced by the Government of Kerala based on this motto ONE STATE, ONE APPROVAL, ONE DOCUMENT (OSAD)?",
               image: "quizassets/round2-b3-q2img.png",
               answer: "SARAL BILL",
@@ -227,7 +227,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b4-q1",
               qCode: "B-4-1",
-              choice: "Q-1",
+              choice: "H",
               text: "Who is the renowned advertising professional who coined the famous tourism tagline 'God's Own Country' for Kerala?",
               image: "quizassets/round2-b4-q1img.png",
               answer: "Walter Mendez",
@@ -236,7 +236,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b4-q2",
               qCode: "B-4-2",
-              choice: "Q-2",
+              choice: "A",
               text: "This recently released book by Jijo Abraham is the sequel (second part) to which famous novel?",
               image: "quizassets/round2-b4-q2img.jpeg",
               answer: "Kambilikandathe Kalibharanikal",
@@ -251,7 +251,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b5-q1",
               qCode: "B-5-1",
-              choice: "Q-1",
+              choice: "H",
               text: "What is the specific name given to this calligraphic monogram or official seal used by the Sultans of the Ottoman Empire?",
               image: "quizassets/round2-b5-q1img.jpeg",
               answer: "Thugra",
@@ -260,7 +260,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b5-q2",
               qCode: "B-5-2",
-              choice: "Q-2",
+              choice: "A",
               text: "Identify the names of these two official mascots of the Census of India?",
               image: "quizassets/round2-b5-q2img.jpeg",
               answer: "Pragathi or Vikas",
@@ -275,7 +275,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b6-q1",
               qCode: "B-6-1",
-              choice: "Q-1",
+              choice: "H",
               text: "The common brand introduced by the Government of Kerala for local products is called ___?",
               image: "quizassets/round2-b6-q1img.jpeg",
               answer: "KERALA BRAND",
@@ -284,7 +284,7 @@ const QUIZ_DATA = {
             {
               id: "r2-b6-q2",
               qCode: "B-6-2",
-              choice: "Q-2",
+              choice: "A",
               text: "Which company does the third logo belong to?",
               image: "quizassets/round2-b6-q2img.png",
               answer: "Godrej",
