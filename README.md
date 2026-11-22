@@ -75,10 +75,15 @@ Each round begins with a transition **Gap Page** outlining round rules, question
 | Key | Action |
 | --- | --- |
 | <kbd>Space</kbd> | Start Timer / Reveal Next Clue |
+| <kbd>W</kbd> | **Round 2: WRONG Answer** (5s countdown &rarr; *"Sorry, Wrong Answer"* &rarr; passes to next team) |
+| <kbd>A</kbd> or <kbd>C</kbd> | **Round 2: CORRECT Answer / SHOW ANSWER** (5s countdown &rarr; Fanfare, Confetti & Answer Reveal) |
+| <kbd>A</kbd> | **Rounds 1, 3, 4, 5**: Reveal Official Answer modal |
+| <kbd>K</kbd> | **Round 2: Discreet Answer Key** (Toggles private judge answer reference without audience reveal) |
+| <kbd>Enter</kbd> | Dismiss Wrong modal (back to question) / Complete Correct modal / Confirm final results |
+| <kbd>S</kbd> | Open / Close **Live Team Scoreboard** |
+| <kbd>P</kbd> | **Pause / Resume** Countdown Timer |
 | <kbd>→</kbd> | Next Question |
 | <kbd>←</kbd> | Previous Question |
-| <kbd>A</kbd> | Reveal **Official Answer** (Triggers R2 Countdown or Direct Center Modal) |
-| <kbd>P</kbd> | **Pause / Resume** Countdown Timer |
 | <kbd>F</kbd> | Toggle **Fullscreen** Mode |
 | <kbd>J</kbd> | Open / Close **Judge Navigation Drawer** |
 | <kbd>Esc</kbd> | Dismiss active modal / drawer |

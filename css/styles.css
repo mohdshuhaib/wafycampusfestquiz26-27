@@ -1293,6 +1293,33 @@ html, body {
   background: #1e293b;
 }
 
+.key-badge {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.modal-kbd {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-left: 8px;
+  font-weight: 800;
+  color: #fef08a;
+}
+
 /* ==========================================================================
    EVALUATION BANNER (Correct / Wrong High-Impact Notifications)
    ========================================================================== */

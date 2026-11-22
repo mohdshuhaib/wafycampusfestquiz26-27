@@ -126,7 +126,58 @@ class QuizApp {
   handleKeypress(e) {
     if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
 
-    switch (e.key.toLowerCase()) {
+    const key = e.key.toLowerCase();
+
+    // Round 2 Evaluation active modal checks
+    const r2Modal = document.getElementById('r2-eval-modal');
+    const isR2ModalOpen = r2Modal && !r2Modal.classList.contains('hidden');
+    const wrongCard = document.getElementById('r2-wrong-card');
+    const isWrongCardVisible = isR2ModalOpen && wrongCard && !wrongCard.classList.contains('hidden');
+    const correctCard = document.getElementById('r2-correct-card');
+    const isCorrectCardVisible = isR2ModalOpen && correctCard && !correctCard.classList.contains('hidden');
+    const isCountdownRunning = Boolean(this.r2EvalTimer);
+
+    // If 5s countdown is actively running in Round 2, ignore evaluation triggers to prevent interruption
+    if (isCountdownRunning) {
+      if (key === 'escape') {
+        this.closeR2WrongModal();
+      }
+      return;
+    }
+
+    // If Wrong Card is visible in Round 2:
+    if (isWrongCardVisible) {
+      if (['enter', 'escape', ' ', 'w'].includes(key)) {
+        e.preventDefault();
+        this.closeR2WrongModal();
+        return;
+      }
+    }
+
+    // If Correct Card is visible in Round 2:
+    if (isCorrectCardVisible) {
+      if (['enter', ' ', 'c', 'a'].includes(key)) {
+        e.preventDefault();
+        this.completeR2FromModal();
+        return;
+      }
+    }
+
+    // If Results Confirmation modal is open in Round 5:
+    const confirmResultsModal = document.getElementById('confirm-results-modal');
+    if (confirmResultsModal && !confirmResultsModal.classList.contains('hidden')) {
+      if (key === 'enter') {
+        e.preventDefault();
+        this.startResultsCountdown();
+        return;
+      }
+      if (key === 'escape') {
+        this.closeConfirmResultsModal();
+        return;
+      }
+    }
+
+    switch (key) {
       case ' ': // Space bar
         e.preventDefault();
         if (this.currentView === 'general-q' || this.currentView === 'r4-clue') {
@@ -137,28 +188,65 @@ class QuizApp {
           }
         }
         break;
-      case 'a': // Toggle Answer Key
-        if (this.currentRoundIdx !== 1) {
-          this.revealAnswerModal();
+
+      case 'w': // WRONG Answer in Round 2 (5s countdown -> "Sorry, Wrong Answer")
+        if (this.currentRoundIdx === 1 && this.currentView === 'general-q') {
+          e.preventDefault();
+          this.handleR2Evaluation(false);
+        }
+        break;
+
+      case 'c': // CORRECT Answer in Round 2 (5s countdown -> Answer Reveal)
+        if (this.currentRoundIdx === 1 && this.currentView === 'general-q') {
+          e.preventDefault();
+          this.handleR2Evaluation(true);
+        }
+        break;
+
+      case 'a': // SHOW ANSWER / CORRECT: In R2 triggers 5s countdown + answer reveal; in other rounds toggles Answer Modal!
+        e.preventDefault();
+        if (this.currentRoundIdx === 1 && this.currentView === 'general-q') {
+          this.handleR2Evaluation(true);
         } else {
+          const ansModal = document.getElementById('answer-modal');
+          if (ansModal && !ansModal.classList.contains('hidden')) {
+            this.closeAnswerModal();
+          } else {
+            this.revealAnswerModal();
+          }
+        }
+        break;
+
+      case 'k': // Toggle Discreet Official Answer Key in Round 2
+        if (this.currentRoundIdx === 1) {
           this.toggleJudgeAnswerKey();
         }
         break;
+
+      case 's': // Toggle Live Scoreboard
+        this.toggleScoreboard();
+        break;
+
       case 'p': // Pause/Resume Timer
         this.toggleTimerPause();
         break;
+
       case 'f': // Fullscreen
         this.toggleFullscreen();
         break;
+
       case 'j': // Judge drawer
         this.toggleJudgeDrawer();
         break;
+
       case 'arrowright': // Next
         this.navigateNext();
         break;
+
       case 'arrowleft': // Back
         this.navigateBack();
         break;
+
       case 'escape': // Close active modals
         this.closeAnswerModal();
         this.closeConfirmResultsModal();
@@ -777,14 +865,14 @@ class QuizApp {
           </div>
 
           <div class="judge-quick-group">
-            <button class="btn-eval btn-wrong" onclick="quizApp.handleR2Evaluation(false)">
-              ✖ WRONG
+            <button class="btn-eval btn-wrong" onclick="quizApp.handleR2Evaluation(false)" title="Shortcut: Press W">
+              ✖ WRONG <span class="key-badge">W</span>
             </button>
-            <button class="btn-eval btn-correct" onclick="quizApp.handleR2Evaluation(true)">
-              ✔ CORRECT
+            <button class="btn-eval btn-correct" onclick="quizApp.handleR2Evaluation(true)" title="Shortcut: Press A or C">
+              ✔ CORRECT <span class="key-badge">A / C</span>
             </button>
-            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleJudgeAnswerKey()">
-              👁 ANSWER KEY
+            <button class="btn-eval btn-answer-key" onclick="quizApp.toggleJudgeAnswerKey()" title="Shortcut: Press K">
+              👁 ANSWER KEY <span class="key-badge">K</span>
             </button>
           </div>
         </div>
@@ -802,6 +890,8 @@ class QuizApp {
    * If Correct: 5..4..3..2..1 -> "Correct Answer!" + reveals answer + button to return to boxes!
    */
   handleR2Evaluation(isCorrect) {
+    if (this.r2EvalTimer) return; // Prevent duplicate rapid triggers
+
     window.audioMgr.playClick();
     if (this.timerRunning) {
       this.stopTimer();
